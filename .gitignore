@@ -1,0 +1,30 @@
+# Environments
+venv/
+env/
+.env
+
+# API Keys and Secrets
+.env
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Databases
+*.sqlite
+*.db
+data/chroma/
+
+# Logs and databases
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
