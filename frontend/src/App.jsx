@@ -378,8 +378,17 @@ function App() {
                 </div>
               )}
               {messages.map((msg, idx) => {
-                const hasBlankTemplate = msg.content && msg.content.includes('[DOWNLOAD_BLANK_PETITION]');
-                const cleanContent = hasBlankTemplate 
+                // Highly deterministic matching logic: if the message is from assistant, and contains words like "şablon"/"dilekçe" and dots or "boş"
+                const hasBlankTemplate = msg.role === 'assistant' && msg.content && (
+                  msg.content.includes('[DOWNLOAD_BLANK_PETITION]') ||
+                  msg.content.includes('T.C. İSKENDERUN TEKNİK') ||
+                  (
+                    (msg.content.toLowerCase().includes('şablon') || msg.content.toLowerCase().includes('dilekçe')) && 
+                    (msg.content.toLowerCase().includes('boş') || msg.content.includes('.....') || msg.content.includes('.......'))
+                  )
+                );
+                
+                const cleanContent = msg.content 
                   ? msg.content.replace('[DOWNLOAD_BLANK_PETITION]', '').trim() 
                   : msg.content;
                 
