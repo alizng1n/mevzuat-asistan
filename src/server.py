@@ -450,26 +450,54 @@ async def download_source(filename: str):
     from fastapi.responses import FileResponse
     import urllib.parse
     
-    # Sanitize filename to prevent directory traversal attacks
-    safe_name = os.path.basename(filename)
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    raw_dir = os.path.join(project_root, "data", "raw")
+    archive_dir = os.path.join(project_root, "data", "archive")
     
-    # Try searching in data/raw/
-    file_path = os.path.join(project_root, "data", "raw", safe_name)
-    if os.path.exists(file_path):
+    # Fuzzy matcher helper
+    def find_file(directory: str, target: str) -> str:
+        if not os.path.exists(directory):
+            return None
+            
+        t_lower = target.lower()
+        # Clean target string for alphanumeric comparison
+        t_clean = re.sub(r'[^a-z0-9]', '', t_lower)
+        
+        for f in os.listdir(directory):
+            f_lower = f.lower()
+            f_clean = re.sub(r'[^a-z0-9]', '', f_lower)
+            
+            # Check direct or cleaned matching
+            if t_clean in f_clean or f_clean in t_clean:
+                return f
+                
+            # Heuristics for special Turkish university forms with character encoding issues
+            if "mazeret" in t_lower and "mazeret" in f_lower:
+                return f
+            if "muafiyet" in t_lower and "muaf" in f_lower:
+                return f
+            if "ekleme" in t_lower and "ekleme" in f_lower:
+                return f
+        return None
+
+    # Search in data/raw/
+    matched_name = find_file(raw_dir, filename)
+    if matched_name:
+        file_path = os.path.join(raw_dir, matched_name)
         return FileResponse(
             file_path, 
-            filename=safe_name,
-            headers={"Content-Disposition": f"attachment; filename={urllib.parse.quote(safe_name)}"}
+            filename=filename, # Return the clean UTF-8 name to the user's browser
+            headers={"Content-Disposition": f"attachment; filename={urllib.parse.quote(filename)}"}
         )
         
-    # Try searching in data/archive/
-    archive_path = os.path.join(project_root, "data", "archive", safe_name)
-    if os.path.exists(archive_path):
+    # Search in data/archive/
+    matched_archive = find_file(archive_dir, filename)
+    if matched_archive:
+        file_path = os.path.join(archive_dir, matched_archive)
         return FileResponse(
-            archive_path, 
-            filename=safe_name,
-            headers={"Content-Disposition": f"attachment; filename={urllib.parse.quote(safe_name)}"}
+            file_path, 
+            filename=filename,
+            headers={"Content-Disposition": f"attachment; filename={urllib.parse.quote(filename)}"}
         )
         
     raise HTTPException(status_code=404, detail="File not found")
