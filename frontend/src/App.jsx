@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { 
   MessageSquare, History, Library, Settings, 
   Send, Search, Plus, CheckCircle2, AlertTriangle, 
-  FileText, ArrowRight, User, Sparkles, Sun, Moon,
+  FileText, ArrowRight, User, Sun, Moon,
   Upload, Camera, Check, X, FileCheck
 } from 'lucide-react';
 import axios from 'axios';
@@ -41,7 +41,7 @@ function App() {
   useEffect(() => {
     if (!isEdited) {
       setPetitionText(
-        `Fakülteniz/Yüksekokulunuz ${department} Bölümü ${studentId} numaralı öğrencisiyim. Öğrenim görmekte olduğum ${courseCode} kodlu ve '${courseName}' isimli dersin yarıyıl içi (vize) sınavına, ${dateRange} tarihlerini kapsayan ve ${institution} tarafından verilen ekteki mazeret belgemde (Tanı: ${reason}) belirtilen mazeretim nedeniyle katılamadım. Mevzuat gereğince ilgili ders için mazeret sınav hakkı tanınması hususunda gereğini ve bilgilerinizi saygılarımla arz ederim.`
+        `Fakülteniz/Yüksekokulunuz {department} Bölümü {studentId} numaralı öğrencisiyim. Öğrenim görmekte olduğum {courseCode} kodlu ve '{courseName}' isimli dersin yarıyıl içi (vize) sınavına, {dateRange} tarihlerini kapsayan ve {institution} tarafından verilen ekteki mazeret belgemde (Tanı: {reason}) belirtilen mazeretim nedeniyle katılamadım. Mevzuat gereğince ilgili ders için mazeret sınav hakkı tanınması hususunda gereğini ve bilgilerinizi saygılarımla arz ederim.`
       );
     }
   }, [fullname, studentId, phone, department, courseCode, courseName, reason, dateRange, institution, isEdited]);
@@ -112,7 +112,7 @@ function App() {
       console.error(error);
       setMessages([...newMessages, { 
         role: 'assistant', 
-        content: "Üzgünüm, bir hata oluştu. Lütfen FastAPI sunucusunun çalıştığından emin olun." 
+        content: "Üzgünüm, bir hata oluştu. Lütfen sunucu bağlantısını kontrol edin." 
       }]);
     } finally {
       setIsLoading(false);
@@ -204,13 +204,13 @@ function App() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="brand">
-          <h1>Mevzuat AI</h1>
-          <p>Akademik Asistan</p>
+          <h1>Mevzuat Portalı</h1>
+          <p>Başvuru ve Bilgi Sistemi</p>
         </div>
 
         <button className="new-chat-btn" onClick={() => handleStartChat()}>
           <Plus size={18} />
-          Yeni Analiz
+          Yeni Sorgulama
         </button>
 
         <ul className="nav-links">
@@ -250,10 +250,10 @@ function App() {
               <div className="page-header">
                 <div>
                   <h2>Dilekçe Taslaklarım</h2>
-                  <p>Mevzuat AI asistanı aracılığıyla hazırlanan akademik dilekçelerinizi yönetin.</p>
+                  <p>Akademik Mevzuat Portalı aracılığıyla hazırlanan resmi dilekçelerinizi yönetin.</p>
                 </div>
-                <button className="new-chat-btn" style={{ background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)', margin: 0, boxShadow: '0 4px 12px rgba(236, 72, 153, 0.3)' }} onClick={() => setIsScanModalOpen(true)}>
-                  <Sparkles size={18} />
+                <button className="new-chat-btn" style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', margin: 0, boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)' }} onClick={() => setIsScanModalOpen(true)}>
+                  <FileText size={18} />
                   Resmi Dilekçe Oluştur
                 </button>
               </div>
@@ -278,8 +278,8 @@ function App() {
                   <div key={draft.id} className="dashboard-card" onClick={() => handleStartChat(`${draft.title} hakkında bilgi ver.`)}>
                     <div className="card-header">
                       {draft.status === 'ready' && <span className="tag ready"><CheckCircle2 size={12} /> Dışa Aktarıma Hazır</span>}
-                      {draft.status === 'drafting' && <span className="tag drafting"><Sparkles size={12} /> Taslak Aşamasında</span>}
-                      {draft.status === 'review' && <span className="tag" style={{background: 'rgba(236,72,153,0.1)', color: 'var(--accent-pink)'}}><AlertTriangle size={12} /> İncelemede</span>}
+                      {draft.status === 'drafting' && <span className="tag drafting"><FileText size={12} /> Taslak Aşamasında</span>}
+                      {draft.status === 'review' && <span className="tag" style={{background: 'rgba(2,132,199,0.1)', color: 'var(--accent-purple)'}}><AlertTriangle size={12} /> İncelemede</span>}
                       {draft.status === 'finalized' && <span className="tag" style={{background: 'rgba(0,229,255,0.1)', color: 'var(--accent-blue)'}}><CheckCircle2 size={12} /> Onaylandı</span>}
                       <span style={{ fontSize: 12, color: '#94A3B8' }}>{new Date(draft.updated_at).toLocaleDateString('tr-TR')}</span>
                     </div>
@@ -289,7 +289,7 @@ function App() {
                     {idx === 0 ? (
                       <div className="card-actions">
                         <button className="btn-primary" onClick={(e) => { e.stopPropagation(); setIsScanModalOpen(true); }}>Dilekçeyi Düzenle ve PDF İndir</button>
-                        <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); handleStartChat(`${draft.title} düzenlemek istiyorum.`); }}>Asistanla Düzenle</button>
+                        <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); handleStartChat(`${draft.title} düzenlemek istiyorum.`); }}>Dilekçeyi Düzenle</button>
                       </div>
                     ) : (
                       <div className="progress-bar-container">
@@ -313,7 +313,7 @@ function App() {
                     bgColors = { bg: 'rgba(0,229,255,0.1)', color: 'var(--accent-blue)', border: 'rgba(0,229,255,0.2)' };
                   } else if (draft.status === 'review') {
                     icon = <AlertTriangle size={20} />;
-                    bgColors = { bg: 'rgba(236,72,153,0.1)', color: 'var(--accent-pink)', border: 'rgba(236,72,153,0.2)' };
+                    bgColors = { bg: 'rgba(2,132,199,0.1)', color: 'var(--accent-purple)', border: 'rgba(2,132,199,0.2)' };
                   }
                   
                   return (
@@ -363,7 +363,7 @@ function App() {
                 <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '40px' }}>
                   <img src="/iste_logo.png" alt="İSTE Logo" style={{ width: '48px', height: '48px', opacity: 0.8, marginBottom: '16px' }} />
                   <h2>Size nasıl yardımcı olabilirim?</h2>
-                  <p>Üniversite mevzuatları hakkında soru sorabilirsiniz.</p>
+                  <p>Mevzuat ve başvuru süreçleri hakkında bilgi alabilirsiniz.</p>
                 </div>
               )}
               {messages.map((msg, idx) => {
@@ -379,7 +379,7 @@ function App() {
                 return (
                   <div key={idx} className={`message ${msg.role}`}>
                     <div className="message-avatar">
-                      {msg.role === 'user' ? <User size={18} /> : <img src="/iste_logo.png" alt="AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />}
+                      {msg.role === 'user' ? <User size={18} /> : <img src="/iste_logo.png" alt="Portal" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <div className="message-content">
@@ -416,7 +416,7 @@ function App() {
               })}
               {isLoading && (
                 <div className="message assistant">
-                  <div className="message-avatar"><img src="/iste_logo.png" alt="AI" style={{ width: '24px', height: '24px', objectFit: 'contain' }} /></div>
+                  <div className="message-avatar"><img src="/iste_logo.png" alt="Portal" style={{ width: '24px', height: '24px', objectFit: 'contain' }} /></div>
                   <div className="message-content">
                     <div className="typing-dots">
                       <span></span><span></span><span></span>
@@ -430,7 +430,7 @@ function App() {
             <div className="chat-input-wrapper">
               <input 
                 type="text" 
-                placeholder="Mevzuat asistanına sor..." 
+                placeholder="Mevzuat sistemine sor..." 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
@@ -534,7 +534,7 @@ function App() {
                           style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                           onClick={() => setIsEdited(false)}
                         >
-                          <Sparkles size={11} /> Yazıyı Şablona Sıfırla
+                          <History size={11} /> Yazıyı Şablona Sıfırla
                         </button>
                       )}
                     </div>
