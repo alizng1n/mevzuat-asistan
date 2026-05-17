@@ -427,7 +427,7 @@ function App() {
             <div className="chat-input-wrapper">
               <input 
                 type="text" 
-                placeholder="Mevzuat sistemine sor..." 
+                placeholder="Öğrenci rehberine sor..." 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
