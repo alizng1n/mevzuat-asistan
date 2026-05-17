@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { 
   MessageSquare, History, Library, Settings, 
   Send, Search, Plus, CheckCircle2, AlertTriangle, 
-  FileText, ArrowRight, User, Sun, Moon,
+  FileText, ArrowRight, User, Sun, Moon, Home,
   Upload, Camera, Check, X, FileCheck
 } from 'lucide-react';
 import axios from 'axios';
@@ -207,7 +207,31 @@ function App() {
           <p>Başvuru ve Bilgi Sistemi</p>
         </div>
 
-        <button className="new-chat-btn" onClick={() => handleStartChat()}>
+        {/* Home / Menu Button */}
+        <button 
+          className="nav-item" 
+          style={{ 
+            width: '100%', 
+            border: '1px solid var(--border-color)', 
+            background: !isChatMode ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+            color: !isChatMode ? 'var(--text-primary)' : 'var(--text-secondary)',
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            fontSize: '14px',
+            marginBottom: '12px',
+            transition: 'all 0.2s'
+          }} 
+          onClick={() => setIsChatMode(false)}
+        >
+          <Home size={18} /> Menü (Ana Sayfa)
+        </button>
+
+        <button className="new-chat-btn" onClick={() => handleStartChat()} style={{ marginBottom: '32px' }}>
           <Plus size={18} />
           Yeni Sorgulama
         </button>
