@@ -679,3 +679,68 @@ async def get_person_detail(url: str):
         print(f"Error fetching person details: {e}")
         
     return details
+
+# --- ZIMBRA E-POSTA ENTEGRASYONu ---
+
+from src.zimbra_client import zimbra_login, fetch_inbox
+
+class ZimbraLoginRequest(BaseModel):
+    email: str
+    password: str
+
+# Oturum token'larını bellekte tut (basit cache)
+_zimbra_sessions = {}
+
+@app.post("/api/zimbra/login")
+async def zimbra_login_endpoint(req: ZimbraLoginRequest):
+    """Zimbra'ya giriş yapar ve token döndürür."""
+    try:
+        token = zimbra_login(req.email, req.password)
+        # Token'ı session olarak sakla
+        _zimbra_sessions[req.email] = token
+        return {"success": True, "email": req.email}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+class ZimbraInboxRequest(BaseModel):
+    email: str
+    limit: int = 50
+    offset: int = 0
+
+@app.post("/api/zimbra/inbox")
+async def zimbra_inbox_endpoint(req: ZimbraInboxRequest):
+    """Gelen kutusu e-postalarını çeker ve sınıflandırır."""
+    token = _zimbra_sessions.get(req.email)
+    if not token:
+        raise HTTPException(status_code=401, detail="Önce giriş yapmalısınız.")
+    
+    try:
+        emails = fetch_inbox(token, limit=req.limit, offset=req.offset)
+        
+        # İstatistikleri hesapla
+        academic_count = sum(1 for e in emails if e['category'] == 'academic')
+        announcement_count = sum(1 for e in emails if e['category'] == 'announcement')
+        unread_count = sum(1 for e in emails if not e['is_read'])
+        
+        return {
+            "emails": emails,
+            "stats": {
+                "total": len(emails),
+                "academic": academic_count,
+                "announcement": announcement_count,
+                "unread": unread_count
+            }
+        }
+    except Exception as e:
+        # Token süresi dolmuş olabilir
+        if "auth" in str(e).lower():
+            del _zimbra_sessions[req.email]
+            raise HTTPException(status_code=401, detail="Oturum süresi doldu, lütfen tekrar giriş yapın.")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/zimbra/logout")
+async def zimbra_logout_endpoint(req: ZimbraLoginRequest):
+    """Zimbra oturumunu sonlandırır."""
+    if req.email in _zimbra_sessions:
+        del _zimbra_sessions[req.email]
+    return {"success": True}

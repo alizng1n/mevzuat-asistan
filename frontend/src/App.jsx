@@ -4,7 +4,7 @@ import {
   Send, Search, Plus, CheckCircle2, AlertTriangle, 
   FileText, ArrowRight, User, Users, Sun, Moon, Home,
   Upload, Camera, Check, X, FileCheck, Bell, Mail, ExternalLink,
-  Clock, Info, Loader2, ChevronDown, ChevronUp
+  Clock, Info, Loader2, ChevronDown, ChevronUp, Inbox, Lock, LogOut, GraduationCap, Megaphone, Eye, EyeOff
 } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
@@ -34,6 +34,17 @@ function App() {
   const [personDetailLoading, setPersonDetailLoading] = useState(false);
   const [personDetail, setPersonDetail] = useState(null);
   const [activeAccordion, setActiveAccordion] = useState(null);
+
+  // Zimbra E-Posta State
+  const [zimbraEmail, setZimbraEmail] = useState(() => localStorage.getItem('zimbraEmail') || '');
+  const [zimbraPassword, setZimbraPassword] = useState('');
+  const [zimbraLoggedIn, setZimbraLoggedIn] = useState(false);
+  const [zimbraLoading, setZimbraLoading] = useState(false);
+  const [zimbraError, setZimbraError] = useState('');
+  const [zimbraEmails, setZimbraEmails] = useState([]);
+  const [zimbraStats, setZimbraStats] = useState({ total: 0, academic: 0, announcement: 0, unread: 0 });
+  const [emailFilter, setEmailFilter] = useState('all'); // 'all' | 'academic' | 'announcement'
+  const [showPassword, setShowPassword] = useState(false);
 
   const messagesEndRef = useRef(null);
 
@@ -93,7 +104,21 @@ function App() {
         setDrafts(draftsRes.data);
         setSources(sourcesRes.data);
         setAnnouncements(annRes.data);
-        setPersonnel(personnelRes.data);
+        const formatDept = (dept) => {
+          if (!dept) return dept;
+          const d = dept.trim().toUpperCase();
+          if (d === 'BM') return 'Bilgisayar Müh.';
+          if (d === 'MDBF') return 'Mühendislik Fak.';
+          if (d === 'EE' || d === 'EEM') return 'Elektrik-Elektronik Müh.';
+          if (d === 'İİBF' || d === 'IIBF') return 'İktisadi ve İdari Bil. Fak.';
+          if (d === 'İME' || d === 'IME') return 'İşletme Müh.';
+          if (d === 'MM') return 'Makine Müh.';
+          if (d === 'İNM' || d === 'INM') return 'İnşaat Müh.';
+          if (d === 'MAM') return 'Malzeme Müh.';
+          if (d === 'MMF') return 'Mimarlık Fak.';
+          return dept;
+        };
+        setPersonnel(personnelRes.data.map(p => ({ ...p, department: formatDept(p.department) })));
       } catch (err) {
         console.error("Failed to fetch data", err);
       }
@@ -309,12 +334,68 @@ function App() {
             cursor: 'pointer',
             fontWeight: '500',
             fontSize: '14px',
-            marginBottom: '32px',
+            marginBottom: '12px',
             transition: 'all 0.2s'
           }} 
           onClick={() => { setIsChatMode(false); setActiveTab('directory'); }}
         >
           <Users size={18} /> Akademik Kadro
+        </button>
+
+        <button 
+          className="nav-item" 
+          style={{ 
+            width: '100%', 
+            border: '1px solid var(--border-color)', 
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            fontSize: '14px',
+            marginBottom: '12px',
+            transition: 'all 0.2s'
+          }} 
+          onClick={() => setIsScanModalOpen(true)}
+        >
+          <FileText size={18} /> Resmi Dilekçe Oluştur
+        </button>
+
+        {/* Gelen E-postalar Button */}
+        <button 
+          className="nav-item" 
+          style={{ 
+            width: '100%', 
+            border: '1px solid var(--border-color)', 
+            background: !isChatMode && activeTab === 'emails' ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+            color: !isChatMode && activeTab === 'emails' ? 'var(--text-primary)' : 'var(--text-secondary)',
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            fontSize: '14px',
+            marginBottom: '32px',
+            transition: 'all 0.2s',
+            position: 'relative'
+          }} 
+          onClick={() => { setIsChatMode(false); setActiveTab('emails'); }}
+        >
+          <Inbox size={18} /> Gelen E-postalar
+          {zimbraStats.unread > 0 && zimbraLoggedIn && (
+            <span style={{
+              position: 'absolute', right: '10px', background: '#ef4444',
+              color: '#fff', fontSize: '10px', fontWeight: '700',
+              padding: '2px 6px', borderRadius: '10px', minWidth: '18px',
+              textAlign: 'center'
+            }}>{zimbraStats.unread}</span>
+          )}
         </button>
 
         <div style={{ marginTop: 'auto' }}>
@@ -350,10 +431,6 @@ function App() {
                   <h2>Dilekçe İşlemleri</h2>
                   <p>Akademik Öğrenci Rehberi aracılığıyla resmi dilekçelerinizi oluşturun ve yönetin.</p>
                 </div>
-                <button className="new-chat-btn" style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', margin: 0, boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)' }} onClick={() => setIsScanModalOpen(true)}>
-                  <FileText size={18} />
-                  Resmi Dilekçe Oluştur
-                </button>
               </div>
 
               <div className="stats-grid">
@@ -626,7 +703,7 @@ function App() {
                                   </a>
                                 )}
                                 {p.profile_url && (
-                                  <button onClick={(e) => { e.stopPropagation(); handlePersonClick(p); }} style={{
+                                  <a href={p.profile_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{
                                     display: 'flex', alignItems: 'center', gap: '4px',
                                     fontSize: '12px', color: '#10b981', fontWeight: '600',
                                     textDecoration: 'none', transition: 'all 0.2s',
@@ -640,7 +717,7 @@ function App() {
                                   onMouseOut={(e) => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.1)'}
                                   >
                                     <ExternalLink size={12} /> Profil
-                                  </button>
+                                  </a>
                                 )}
                               </div>
                             </div>
@@ -655,7 +732,169 @@ function App() {
                   );
                 })()}
              </div>
-          )
+          ) : activeTab === 'emails' ? (
+          /* E-Posta Gelen Kutusu */
+          <div className="content-wrapper" style={{ paddingTop: '48px' }}>
+            <div className="page-header">
+              <div>
+                <h2>Gelen E-postalar</h2>
+                <p>İSTE Zimbra e-posta gelen kutunuz — otomatik sınıflandırma ile</p>
+              </div>
+              {zimbraLoggedIn && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn-secondary" onClick={async () => {
+                    setZimbraLoading(true);
+                    try {
+                      const res = await axios.post('http://localhost:8000/api/zimbra/inbox', { email: zimbraEmail });
+                      setZimbraEmails(res.data.emails);
+                      setZimbraStats(res.data.stats);
+                    } catch(e) { setZimbraError('E-postalar yüklenemedi.'); }
+                    setZimbraLoading(false);
+                  }} style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Loader2 size={14} className={zimbraLoading ? 'spinning' : ''} /> Yenile
+                  </button>
+                  <button className="btn-secondary" onClick={async () => {
+                    try { await axios.post('http://localhost:8000/api/zimbra/logout', { email: zimbraEmail, password: '' }); } catch(e) {}
+                    setZimbraLoggedIn(false); setZimbraEmails([]); setZimbraStats({ total: 0, academic: 0, announcement: 0, unread: 0 });
+                  }} style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444' }}>
+                    <LogOut size={14} /> Çıkış
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!zimbraLoggedIn ? (
+              /* Login Form */
+              <div style={{ maxWidth: '420px', margin: '60px auto' }}>
+                <div className="dashboard-card" style={{ padding: '32px' }}>
+                  <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'linear-gradient(135deg, #0284c7, #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                      <Lock size={24} color="#fff" />
+                    </div>
+                    <h3 style={{ margin: '0 0 6px', fontSize: '18px', color: 'var(--text-primary)' }}>Zimbra E-Posta Girişi</h3>
+                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>İSTE e-posta hesabınızla giriş yapın</p>
+                  </div>
+
+                  {zimbraError && (
+                    <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: '#ef4444' }}>
+                      {zimbraError}
+                    </div>
+                  )}
+
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    setZimbraLoading(true); setZimbraError('');
+                    try {
+                      await axios.post('http://localhost:8000/api/zimbra/login', { email: zimbraEmail, password: zimbraPassword });
+                      localStorage.setItem('zimbraEmail', zimbraEmail);
+                      setZimbraLoggedIn(true);
+                      const res = await axios.post('http://localhost:8000/api/zimbra/inbox', { email: zimbraEmail });
+                      setZimbraEmails(res.data.emails);
+                      setZimbraStats(res.data.stats);
+                    } catch(err) {
+                      setZimbraError(err.response?.data?.detail || 'Giriş başarısız. E-posta veya şifrenizi kontrol edin.');
+                    }
+                    setZimbraLoading(false);
+                  }}>
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '6px' }}>E-posta Adresi</label>
+                      <div style={{ position: 'relative' }}>
+                        <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                        <input type="email" placeholder="ornek@iste.edu.tr" value={zimbraEmail} onChange={(e) => setZimbraEmail(e.target.value)} required
+                          style={{ width: '100%', padding: '11px 14px 11px 38px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-sidebar)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '20px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '6px' }}>Şifre</label>
+                      <div style={{ position: 'relative' }}>
+                        <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                        <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={zimbraPassword} onChange={(e) => setZimbraPassword(e.target.value)} required
+                          style={{ width: '100%', padding: '11px 42px 11px 38px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-sidebar)', color: 'var(--text-primary)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}>
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    <button type="submit" className="new-chat-btn" disabled={zimbraLoading}
+                      style={{ width: '100%', justifyContent: 'center', opacity: zimbraLoading ? 0.7 : 1 }}>
+                      {zimbraLoading ? <><Loader2 size={16} className="spinning" /> Giriş Yapılıyor...</> : <><Inbox size={16} /> Giriş Yap</>}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              /* E-Posta Listesi */
+              <>
+                {/* Filtre Tabları */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'all', label: 'Tümü', count: zimbraStats.total, icon: <Inbox size={14} /> },
+                    { key: 'academic', label: 'Hocalardan', count: zimbraStats.academic, icon: <GraduationCap size={14} />, color: '#10b981' },
+                    { key: 'announcement', label: 'Duyurular', count: zimbraStats.announcement, icon: <Megaphone size={14} />, color: '#f59e0b' }
+                  ].map(tab => (
+                    <button key={tab.key} onClick={() => setEmailFilter(tab.key)} style={{
+                      padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
+                      border: emailFilter === tab.key ? '2px solid ' + (tab.color || 'var(--accent-blue)') : '1px solid var(--border-color)',
+                      background: emailFilter === tab.key ? (tab.color || 'var(--accent-blue)') + '18' : 'transparent',
+                      color: emailFilter === tab.key ? (tab.color || 'var(--accent-blue)') : 'var(--text-secondary)',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
+                    }}>
+                      {tab.icon} {tab.label} <span style={{ opacity: 0.7 }}>({tab.count})</span>
+                    </button>
+                  ))}
+                </div>
+
+                {zimbraLoading ? (
+                  <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+                    <Loader2 size={32} className="spinning" style={{ marginBottom: '12px' }} />
+                    <p>E-postalar yükleniyor...</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {zimbraEmails.filter(e => emailFilter === 'all' || e.category === emailFilter).map((email, idx) => (
+                      <div key={email.id || idx} className="dashboard-card" style={{
+                        padding: '16px 20px', display: 'flex', gap: '14px', alignItems: 'flex-start',
+                        cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
+                        borderLeft: email.category === 'academic' ? '3px solid #10b981' : email.category === 'announcement' ? '3px solid #f59e0b' : '3px solid var(--border-color)',
+                        opacity: email.is_read ? 0.75 : 1
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = ''; }}
+                      >
+                        <div style={{
+                          width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+                          background: email.category === 'academic' ? 'rgba(16,185,129,0.12)' : email.category === 'announcement' ? 'rgba(245,158,11,0.12)' : 'rgba(2,132,199,0.1)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          {email.category === 'academic' ? <GraduationCap size={18} color="#10b981" /> : email.category === 'announcement' ? <Megaphone size={18} color="#f59e0b" /> : <Mail size={18} color="var(--accent-blue)" />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: email.is_read ? '500' : '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>
+                              {email.from_name || email.from_address}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', flexShrink: 0, marginLeft: '8px' }}>{email.date}</span>
+                          </div>
+                          <div style={{ fontSize: '14px', fontWeight: email.is_read ? '400' : '600', color: 'var(--text-primary)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {!email.is_read && <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#0284c7', marginRight: '6px' }}></span>}
+                            {email.subject}
+                          </div>
+                          {email.snippet && (
+                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email.snippet}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {zimbraEmails.filter(e => emailFilter === 'all' || e.category === emailFilter).length === 0 && (
+                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                        Bu kategoride e-posta bulunamadı.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         ) : (
           /* Chat Interface */
           <div className="chat-container">

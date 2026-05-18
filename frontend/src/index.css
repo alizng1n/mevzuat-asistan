@@ -1035,6 +1035,14 @@ body {
   50% { box-shadow: 0 0 25px rgba(2, 132, 199, 0.4); }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
 /* Source Insights / Citations */
 .sources-insights {
   margin-top: 16px;

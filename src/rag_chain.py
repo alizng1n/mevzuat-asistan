@@ -92,9 +92,30 @@ def get_rag_chain():
             with open(personnel_path, 'r', encoding='utf-8') as f:
                 d = json.load(f)
                 
+            def format_dept(dept_name):
+                if not dept_name:
+                    return 'Belirtilmemiş'
+                d = str(dept_name).strip().upper()
+                mapping = {
+                    'BM': 'Bilgisayar Müh.',
+                    'MDBF': 'Mühendislik Fak.',
+                    'EE': 'Elektrik-Elektronik Müh.',
+                    'EEM': 'Elektrik-Elektronik Müh.',
+                    'İİBF': 'İktisadi ve İdari Bil. Fak.',
+                    'IIBF': 'İktisadi ve İdari Bil. Fak.',
+                    'İME': 'İşletme Müh.',
+                    'IME': 'İşletme Müh.',
+                    'MM': 'Makine Müh.',
+                    'İNM': 'İnşaat Müh.',
+                    'INM': 'İnşaat Müh.',
+                    'MAM': 'Malzeme Müh.',
+                    'MMF': 'Mimarlık Fak.'
+                }
+                return mapping.get(d, dept_name)
+
             depts = {}
             for p in d:
-                dept = p.get('department', 'Belirtilmemiş')
+                dept = format_dept(p.get('department'))
                 if dept:
                     depts[dept] = depts.get(dept, 0) + 1
                     
@@ -104,7 +125,7 @@ def get_rag_chain():
                 
             lines = []
             for p in d:
-                dept = p.get('department', 'Belirtilmemiş')
+                dept = format_dept(p.get('department'))
                 title = p.get('details', {}).get('title', '')
                 office = ', '.join([o['time'] for o in p.get('details', {}).get('office_hours', [])])
                 line = f"{title} {p['name']} - {dept} - E-Posta: {p.get('email', '')}"
