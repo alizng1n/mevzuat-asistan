@@ -935,8 +935,9 @@ function App() {
                   }}>
                     <div className="dashboard-card" style={{
                       width: '100%', maxWidth: '800px', maxHeight: '90vh',
-                      background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column',
-                      overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.2)'
+                      background: 'var(--bg-card)', display: 'flex', flexDirection: 'column',
+                      overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+                      border: '1px solid var(--border-color)', borderRadius: '16px'
                     }}>
                       <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
