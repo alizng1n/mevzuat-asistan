@@ -47,7 +47,9 @@ function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [emailDetailLoading, setEmailDetailLoading] = useState(false);
-  const [zimbraDeadlines, setZimbraDeadlines] = useState([]);
+  const [zimbraDeadlines, setZimbraDeadlines] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('zimbraDeadlines')) || []; } catch { return []; }
+  });
   const [deadlinesLoading, setDeadlinesLoading] = useState(false);
 
   const messagesEndRef = useRef(null);
@@ -168,11 +170,14 @@ function App() {
         }));
         try {
           const deadlinesRes = await axios.post('http://localhost:8000/api/zimbra/extract-deadlines', { emails: reqEmails });
-          setZimbraDeadlines(deadlinesRes.data.deadlines || []);
+          const newDeadlines = deadlinesRes.data.deadlines || [];
+          setZimbraDeadlines(newDeadlines);
+          localStorage.setItem('zimbraDeadlines', JSON.stringify(newDeadlines));
         } catch (e) { console.error("Deadline extraction failed", e); }
         setDeadlinesLoading(false);
       } else {
         setZimbraDeadlines([]);
+        localStorage.setItem('zimbraDeadlines', '[]');
       }
     } catch(err) {
       setZimbraError(err.response?.data?.detail || 'E-postalar yüklenemedi.');
@@ -197,6 +202,31 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleDeadlineClick = async (task) => {
+    setIsChatMode(false); 
+    setActiveTab('emails');
+    const email = zimbraEmails.find(e => e.id === task.email_id);
+    if (email && email.body) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(email.body, 'text/html');
+      const links = Array.from(doc.querySelectorAll('a'));
+      const ubomLink = links.find(a => a.textContent.includes('Etkinliğe git') || a.href.includes('ubom'));
+      if (ubomLink) {
+        window.open(ubomLink.href, '_blank');
+        return;
+      }
+    }
+    if (email) {
+      setEmailDetailLoading(true);
+      setSelectedEmail(email);
+      try {
+        const res = await axios.post('http://localhost:8000/api/zimbra/message', { email: zimbraEmail, msg_id: email.id });
+        setSelectedEmail({...email, ...res.data});
+      } catch (err) {}
+      setEmailDetailLoading(false);
+    }
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -218,10 +248,25 @@ function App() {
     setInput('');
     setIsLoading(true);
 
+    let contextStr = `Aktif Sayfa: ${activeTab === 'dashboard' ? 'Ana Sayfa (Dilekçe Formu)' : activeTab === 'directory' ? 'Akademik Kadro Rehberi' : 'Gelen E-postalar'}\n`;
+    if (activeTab === 'directory' && personnel) {
+      const lightPersonnel = personnel.map(p => `${p.name} - ${p.title} (${p.department}) - ${p.email}`).join('\n');
+      contextStr += `Kadro Listesi (Kısa):\n${lightPersonnel.substring(0, 5000)}...\n`;
+    }
+    if (activeTab === 'emails' && zimbraEmails) {
+      const lightEmails = zimbraEmails.map(e => `Gönderen: ${e.from_name || e.from_address}, Konu: ${e.subject}, Tarih: ${e.date}`).join('\n');
+      contextStr += `E-postalar:\n${lightEmails.substring(0, 3000)}...\n`;
+      if (zimbraDeadlines && zimbraDeadlines.length > 0) {
+         const lightDeadlines = zimbraDeadlines.map(d => `Ödev/Görev: ${d.title}, Teslim Tarihi: ${d.deadline}`).join('\n');
+         contextStr += `Yaklaşan Ödevler / Teslim Tarihleri:\n${lightDeadlines}\n`;
+      }
+    }
+
     try {
       const response = await axios.post('http://localhost:8000/api/chat', {
         message: textToSend,
-        history: messages
+        history: messages,
+        context: contextStr
       });
 
       setMessages([...newMessages, { 
@@ -370,8 +415,27 @@ function App() {
           <Home size={18} /> Menü (Ana Sayfa)
         </button>
 
-        <button className="new-chat-btn" onClick={() => handleStartChat()} style={{ marginBottom: '12px' }}>
-          <Plus size={18} />
+        <button 
+          className="nav-item" 
+          onClick={() => handleStartChat()} 
+          style={{ 
+            width: '100%', 
+            border: '1px solid var(--border-color)', 
+            background: isChatMode ? 'rgba(2, 132, 199, 0.1)' : 'transparent',
+            color: isChatMode ? 'var(--text-primary)' : 'var(--text-secondary)',
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            padding: '10px 12px',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            fontSize: '14px',
+            marginBottom: '12px',
+            transition: 'all 0.2s'
+          }} 
+        >
+          <MessageSquare size={18} />
           Soru Sor & Danış
         </button>
 
@@ -480,7 +544,7 @@ function App() {
                   else if (diffDays <= 3) { statusColor = '#f59e0b'; }
 
                   return (
-                    <div key={idx} onClick={() => { setIsChatMode(false); setActiveTab('emails'); }} style={{
+                    <div key={idx} onClick={() => handleDeadlineClick(task)} style={{
                       background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '10px 12px',
                       borderLeft: `3px solid ${statusColor}`, cursor: 'pointer', transition: 'all 0.2s'
                     }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>

@@ -131,6 +131,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[Message] = []
+    context: str = ""
 
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
@@ -149,10 +150,15 @@ async def chat_endpoint(req: ChatRequest):
     max_retries = 3
     backoff = 1
     response = None
+    
+    final_input = req.message
+    if req.context:
+        final_input = f"[Arayüz Bağlamı / Mevcut Sayfa Verileri:\n{req.context}]\n\nSoru: {req.message}"
+        
     for attempt in range(max_retries):
         try:
             response = rag_chain.invoke({
-                "input": req.message,
+                "input": final_input,
                 "chat_history": chat_history
             })
             break
