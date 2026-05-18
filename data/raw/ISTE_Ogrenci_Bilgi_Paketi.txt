@@ -1,0 +1,258 @@
+================================================================================
+İSKENDERUN TEKNİK ÜNİVERSİTESİ (İSTE)
+ÖĞRENCİ BİLGİ PAKETİ
+Kaynak: iste.edu.tr | iste.edu.tr/mdbf | iste.edu.tr/bm
+Derleme Tarihi: 18 Mayıs 2026
+================================================================================
+
+
+========================================
+1. AKADEMİK TAKVİM VE SINAV TARİHLERİ
+   (2025-2026 Öğretim Yılı – Ön Lisans / Lisans)
+========================================
+
+İSTE Öğrenci İşleri Daire Başkanlığı, her öğretim yılına ait akademik takvimi Senato onayıyla belirler ve yeni eğitim-öğretim yılı başlamadan en geç bir ay önce ilan eder. 2025-2026 öğretim yılına ait ön lisans/lisans akademik takvimi aşağıdaki temel tarihleri kapsamaktadır.
+
+GÜZ DÖNEMİ (2025-2026):
+
+Ders kayıtları (online, danışman onayıyla) 15–19 Eylül 2025 tarihleri arasında gerçekleştirilmiştir. Ders ekleme ve bırakma (add/drop) işlemleri 22–23 Eylül 2025 tarihlerinde yapılmıştır. Güz dönemi dersleri 22 Eylül 2025'te başlamış ve 4 Ocak 2026'da sona ermiştir. Ara (vize) sınavları 15–23 Kasım 2025 tarihleri arasında yapılmıştır. Yarıyıl sonu (final) sınavları 5–16 Ocak 2026 tarihleri arasında uygulanmıştır. Bütünleme sınavları ise 19–25 Ocak 2026 tarihleri arasında yapılmıştır. Güz dönemi tek ders sınavı 18 Şubat 2026 tarihinde gerçekleştirilmiştir. Kayıt dondurma başvuruları için son tarih 17 Ekim 2025 olarak belirlenmiştir. 2021-2022 öğretim yılından önce kayıtlı öğrencilere yönelik isteğe bağlı dersten çekilme başvurularının son tarihi 12 Aralık 2025'tir.
+
+BAHAR DÖNEMİ (2025-2026):
+
+Ders programlarının öğrenci bilgi sistemine tanımlanması için son tarih 19 Ocak 2026'dır. Online ders kayıtları ve danışman onayları 26–30 Ocak 2026 tarihleri arasında yapılmıştır. Ders ekleme ve bırakma (add/drop) işlemleri 2–3 Şubat 2026 tarihlerinde gerçekleştirilmiştir. Bahar dönemi dersleri 2 Şubat 2026'da başlamış olup 24 Mayıs 2026'da sona erecektir. Kayıt dondurma başvuruları için son tarih 27 Şubat 2026'dır. Ara (vize) sınavları 28 Mart–5 Nisan 2026 tarihleri arasında uygulanmaktadır. İsteğe bağlı dersten çekilme başvuruları için son tarih 24 Nisan 2026'dır. Yarıyıl sonu (final) sınavları 1–12 Haziran 2026 tarihleri arasında yapılacaktır. Bütünleme sınavları ise 15–21 Haziran 2026 tarihleri arasında uygulanacaktır. Bahar dönemi tek ders sınavı 8 Temmuz 2026 tarihinde gerçekleştirilecektir.
+
+EK SINAV HAKLARI (Azami Süresini Dolduran Öğrenciler):
+
+Azami öğrenim süresini dolduran, son sınıfta olan ve hiç almadığı ders sayısı 5 veya 5'ten az olan öğrenciler, başarısız oldukları tüm dersler için iki ek sınav hakkından yararlanabilir. Bu öğrencilerin 2025-2026 güz dönemi kapsamında ek sınav başvuru tarihleri 26–29 Ocak 2026, 1. Ek Sınav tarihleri 2–5 Şubat 2026, 2. Ek Sınav tarihleri ise 9–12 Şubat 2026 olarak belirlenmiştir. Bahar dönemi kapsamında ise başvurular 7–10 Eylül 2026, 1. Ek Sınav 14–17 Eylül 2026, 2. Ek Sınav 21–24 Eylül 2026 tarihlerinde yapılacaktır.
+
+Akademik takvimlere ulaşmak için: https://iste.edu.tr/oidb/akademik-takvim
+
+Resmi tatiller ya da mücbir sebeplerle ertelenen sınavlar hakkında Sınav Yönergesi şu hükmü içermektedir: "Eğitim dönemlerinde yapılacak sınavlar, iklim koşulları veya diğer mücbir sebeplerle Senato tarafından ileri bir tarihte yapılmak üzere ertelenebilir." Erteleme kararları ilan yoluyla duyurulur ve güncel takip için https://iste.edu.tr/duyuru-merkezi/oidb adresi izlenmelidir.
+
+
+========================================
+2. DERS KAYDI, EKLE-ÇIKAR VE MAZERET
+   KAYIT İŞLEMLERİ
+========================================
+
+Öğrenciler, ders kayıtlarını akademik takvimde belirlenen tarihlerde Öğrenci Bilgi Sistemi (OBS) üzerinden çevrim içi olarak yapmak zorundadır. Kayıt işlemi, danışman onayıyla tamamlanır. Azami ders yükü sınırı içinde kalmak şartıyla öğrenciler, ders ekleme/bırakma (add/drop) süresi içinde aldıkları dersleri değiştirebilir, silebilir veya yeni ders ekleyebilirler. Bu değişiklikler de danışman onayını gerektirir.
+
+Belirlenen sürede kayıt yenilemeyen öğrenciler o yarıyılın derslerini alamaz ve bu derslerin sınavlarına giremez. Kayıt yenilenmemesi nedeniyle geçen süre, azami öğrenim süresinden sayılmaya devam eder. Kayıt yenileme işlemlerinin tümünden öğrenci sorumludur.
+
+MAZERETLİ DERS KAYDI:
+
+Mazereti nedeniyle ders kaydını yenilemeyen veya yenileyemeyen öğrenciler, en geç ilgili yarıyıl ders ekleme/bırakma süresi bitimine kadar ilgili birimine başvurmalıdır. Başvuruyu alan ilgili kurul (fakülte/yüksekokul/meslek yüksekokulu yönetim kurulu), mazereti inceler; geçerli bulunan öğrencilerin ders kayıtları yapılır. Mazerete gerekçe olan belgeler, mazeretin bitim tarihinden itibaren beş iş günü içinde ilgili bölüm/program başkanlığına dilekçe ekiyle sunulmalıdır. Bu sürenin aşılması halinde başvurular işleme konulmaz.
+
+DERS EKLEME-BIRAKMADA DİKKAT EDİLECEK HUSUSLAR:
+
+Add/drop haftasında öğrenciler mevcut derslerini bırakıp yerine yeni ders alabilirler. Ancak bırakılan dersin öğrenim ücreti (yaz okulu için) öğrenciye iade edilmez. Öğrenciler, kayıtlı programdaki ders kotasına (azami ders yükü) uymak ve ön şartlı derslerde gerekli koşulları sağlamak zorundadır.
+
+İLGİLİ FORMLAR (https://iste.edu.tr/oidb/formlar adresinden indirilebilir):
+- Mazeret Sınavı Başvuru Formu
+- Barınma Sorunu Nedeniyle Mazeret Sınavı Başvuru Formu
+- Dersten Çekilme Talep Formu
+- Genel Talep Formu
+
+
+========================================
+3. DEVAMSIZLIK KURALI VE FİNAL SINAVI
+   GİRİŞ ŞARTLARI
+========================================
+
+Öğrencilerin final (yarıyıl sonu) sınavına girebilmesi için aşağıdaki devam koşullarını yerine getirmesi zorunludur. İlk defa kayıt olunan teorik derslerde öğrencinin derse en az %70 oranında katılması gerekmektedir. Uygulamalı dersler veya tamamen uygulamadan oluşan derslerde ise bu oran en az %80'dir. Bu oranları sağlayamayan öğrenciler "devamsız" sayılır ve not çizelgesine "H" (Devamsız) harf notu yazılır; bu not 0,00 katsayısına karşılık gelir ve başarısız sayılır.
+
+Teorik derslerde en az %70, uygulamalı derslerde en az %80 devam zorunluluğu yaz okulunda da aynen geçerlidir; daha önce devam şartını yerine getirmiş olsalar bile yaz okulu öğrencileri bu şartı tekrar sağlamak zorundadır.
+
+
+========================================
+4. BÜTÜNLEME SINAVLARI VE KOŞULLARI
+========================================
+
+Bütünleme sınavları; final sınavına giremeyen, final sınavına girip başarılı olamayan ya da başarılı olup da notunu yükseltmek isteyen öğrencilere akademik takvimde belirlenen tarihlerde uygulanan sınavlardır.
+
+Bütünleme sınavına girebilmek için devam şartının sağlanmış olması gerekir; devamsız (H) notu alan bir öğrenci bütünlemeye de giremez. Bütünleme sınavında alınan not, öğrencinin o dersteki son geçerli notu sayılır. Yani not yükseltmek amacıyla bütünlemeye giren bir öğrencinin aldığı son not, daha önce aldığı finalin yerine geçer.
+
+Not sistemine göre final ve bütünleme sınavlarında değerlendirme şu şekildedir: Ara sınavların katkısı %40, final/bütünleme sınavının katkısı ise %60 olarak uygulanır. Ağırlıklı ortalama bu yüzdeler üzerinden hesaplanır. Harf notu karşılıkları şöyledir: AA (90-100, 4,00), BA (80-89, 3,50), BB (70-79, 3,00), CB (65-69, 2,50), CC (60-64, 2,00), DC (55-59, 1,50 – Başarısız), DD (50-54, 1,00 – Başarısız), FD (40-49, 0,50 – Başarısız), FF (39 ve altı, 0,00 – Başarısız). Başarısız notlar not ortalamasına dahil edilir ve ders tekrar alınması gerekir. Yaz okulunda bütünleme sınavı yapılmaz.
+
+TEK DERS SINAVI:
+
+Mezun olabilmek için tek ders dışındaki tüm derslerini (staj dahil) başarmış olan öğrencilerin başvurusu ve ilgili birim yönetim kurulunun onayıyla, başarısız olunan ve devam şartı sağlanmış o tek ders için her yarıyıl sonunda tek ders sınavı açılır. Bu sınavda başarı notu hesaplanırken ara sınav notu dikkate alınmaz; sınavdan en az CC harf notu almak gerekmektedir. Staj ve İME (İşletmede Mesleki Eğitim) gibi dersler tek ders sınavı kapsamı dışındadır. İlgili form: Tek Ders Sınavı Başvuru Formu (https://iste.edu.tr/oidb/formlar).
+
+
+========================================
+5. YAZ OKULU – ALINAN DERS SAYISI VE
+   KREDİ SINIRI
+========================================
+
+İSTE Yaz Öğretimi Yönergesi'ne göre bir öğrenci yaz okulunda en fazla 3 (üç) ders alabilir. Alınacak derslerin kontrolü, öğrencinin kayıtlı olduğu bölüm/program başkanı tarafından yapılır ve ön şartlı dersler gibi tüm ilkelere dikkat edilir. Yaz okulunun süresi, dönem sonu sınavları hariç 7 (yedi) haftadır ve bu süre azami öğretim süresinden sayılmaz.
+
+Yaz okulunda açılan her ders, güz veya bahar döneminde yapılan toplam ders saatiyle eşdeğer ders saatine sahiptir. Bir dersin açılabilmesi için o derse kayıtlı öğrenci sayısının en az 15 kişi olması gerekmektedir; 50'yi aşarsa ikinci şube açılabilir. Yaz okulunun ilk haftası içinde ders ekleme ve bırakma yapılabilir; ancak bırakılan dersin ücreti iade edilmez. Yıllık açılan dersler yaz okulunda açılmaz. Üniversiteden ilişiği kesilen öğrenciler yaz okulundan yararlanamazlar. Yaz okulu notları %10'luk başarı sıralaması hesaplamasında dikkate alınmaz.
+
+
+========================================
+6. MUAFIYET VE İNTİBAK İŞLEMLERİ
+   (Ders Saydırma)
+========================================
+
+Başka bir yükseköğretim kurumundan İSTE'ye kayıt yaptıran, yatay/dikey geçiş yapan ya da af kanunundan yararlanan öğrenciler, daha önce başardıkları dersler için muafiyet başvurusunda bulunabilirler. Muafiyet işlemleri İSTE Muafiyet ve İntibak Yönergesi hükümlerine göre yürütülür.
+
+BAŞVURU SÜRESİ VE ŞEKLİ:
+
+Muafiyet başvuruları, üniversitenin akademik takviminde belirtilen eğitim-öğretim başlangıç tarihini takip eden en geç 5 (beş) iş günü içinde yapılmalıdır. Eğitim-öğretim başladıktan sonra üniversiteye kayıt olan öğrencilerin başvuruları, kayıt tarihini takip eden en geç 5 gün içinde ilgili bölüm başkanlığına şahsen veya öğrencinin yasal vekili tarafından yapılır. Bu başvuru yalnızca bir defaya mahsustur; süresi geçirilen veya tekrar yapılan başvurular işleme konulmaz.
+
+BAŞVURU İÇİN GEREKLİ BELGELER:
+
+Öğrencinin ilgili bölüm başkanlığına, muafiyet istediği dersleri belirten bir dilekçe vermesi gerekmektedir. Dilekçeye eklenmesi zorunlu belgeler şunlardır: daha önce öğrenim görülen kurumun resmi sitesinde yayımlanan veya onaylı ders içerikleri; onaylı, e-imzalı ya da e-devlet üzerinden alınmış not döküm belgesi (transkript).
+
+MUAFİYET ŞARTLARI:
+
+Muafiyet için daha önce alınan dersten CC ve üzeri harf notu almış olmak gerekmektedir. Muafiyeti talep edilen dersin AKTS kredisi, İSTE'deki eşdeğer dersin AKTS'sinden az olmamalı ya da içeriğinin en az %70'ine karşılık gelmelidir. Dersin adının birebir aynı olması şart değildir; içerik ve kredi uyumu esastır. Öğrenciler, bir derse karşılık birden fazla muafiyet talebinde bulunabilir. YÖK tarafından denkliği tanınmayan yurt dışı üniversitelerden alınan dersler için muafiyet yapılmaz.
+
+AKTS KREDİ SINIRI:
+
+Muaf olunan derslerin toplam AKTS kredisi, ilgili programdaki toplam AKTS kredisinin %75'ini geçemez. Aşılması durumunda, öğrencinin tercihi doğrultusunda ya da öğrencinin en yüksek nottan başlanarak sınıra ulaşılacak şekilde muaf olunacak dersler belirlenir.
+
+NOT VE İNTİBAK ESASLARI:
+
+Muafiyet kabul edilen derslerden öğrencinin daha önce aldığı harf notları aynen kabul edilerek not döküm belgesine işlenir ve AGNO hesaplamasına dahil edilir. Muafiyet programı belirlendikten sonra hangi sınıfa intibak ettirileceği, intibak komisyonu önerisiyle ilgili yönetim kurulunca karara bağlanır. İntibak ettirilen sınıftan önceki yarıyıllarda muaf edilmeyen dersler öncelikli olarak alınır.
+
+İNTİBAK KURALININ ÖZETİ:
+
+Bir sınıf düzeyinin bitimine kadar muaf olunan AKTS toplamı, o sınıf bitimine kadar olan tüm AKTS'nin yarısından en az bir fazlaysa, öğrenci bir üst sınıfa intibak ettirilir. Örneğin: 1. sınıfın toplam AKTS'si 60 ise ve öğrenci 1.-2. sınıftan en az 31 AKTS derse muaf sayılmışsa, 2. sınıfa intibak ettirilir. Yatay geçişle gelen öğrenciler geçiş yaptıkları sınıfın yarıyılına, Dikey Geçiş Sınavı (DGS) ile gelen öğrenciler ise doğrudan 3. sınıfa intibak ettirilir.
+
+MUAFİYET SONUÇLARINA İTİRAZ:
+
+Muafiyet kararının öğrenciye bildirildiği tarihten itibaren en geç 5 iş günü içinde ilgili bölüm başkanlığına itiraz başvurusu yapılabilir. İlgili yönetim kurulu, başvuruyu ivedilikle görüşerek en geç 5 iş günü içinde kararını ilgili başkanlığa ve Öğrenci İşleri Daire Başkanlığına bildirir.
+
+
+========================================
+7. GENEL YÖNETMELİK VE KURALLAR ÖZETİ
+   (Ön Lisans/Lisans Eğitim-Öğretim ve Sınav Yönetmeliği)
+========================================
+
+İSTE Ön Lisans ve Lisans Eğitim-Öğretim ve Sınav Yönetmeliği, 5 Eylül 2021 tarih ve 31589 sayılı Resmi Gazete'de yayımlanmıştır. Yönetmelik, fakülte, yüksekokul, konservatuar ve meslek yüksekokullarındaki tüm ön lisans ve lisans öğrencilerini kapsamaktadır.
+
+ÖĞRETİM SÜRELERİ:
+
+Fakülte, yüksekokul ve konservatuvarda normal öğrenim süresi 4 yıl, meslek yüksekokullarında 2 yıldır. Mezuniyet koşullarını erken sağlayan öğrenciler daha kısa sürede mezun olabilir. Azami öğrenim süresi; 4 yıllık lisans programları için 7 yıl, 2 yıllık ön lisans programları için 4 yıldır. Yabancı dil hazırlık süresi azami 2 yıl olup bu süre azami öğrenim süresine dahil değildir.
+
+DERS YÜKÜ VE DÖNEMLER:
+
+Bir öğretim yılı, her biri en az 70 öğretim gününden oluşan güz ve bahar yarıyıllarından oluşur. Ara sınav ve yarıyıl sonu sınavı günleri bu sürenin dışındadır. Dersler, haftalık ders programında yer alması koşuluyla hafta sonu da yapılabilir. Gerekli görüldüğünde bölüm başkanlığı talebi ve birim yönetim kurulu kararıyla seçmeli derslere öğrenci kotası konulabilir.
+
+BAĞIL DEĞERLENDİRME SİSTEMİ:
+
+İSTE'de başarı notu hesaplamasında bağıl değerlendirme sistemi kullanılmaktadır. Bağıl değerlendirmeye katılan öğrenci sayısı, yarıyıl sonu (final) sınavına katılan ve ağırlıklı ortalaması 15 ve üzeri olan öğrenci sayısıdır. Bu sistemde bir öğrencinin notu, sınıftaki diğer öğrencilerin performansı da göz önünde bulundurularak belirlenir.
+
+MAZERETLİ ARA SINAV VE MAZERETİN KABULÜ:
+
+İlgili birim yönetim kurulunca kabul edilen bir mazereti nedeniyle ara sınava giremeyen öğrencilere, final sınavı öncesinde ilgili birimin uygun göreceği bir tarihte mazeret sınavı yapılabilir. Mazerete dayanak belgeler, mazeretin bitim tarihinden itibaren beş iş günü içinde bölüm başkanlığına dilekçe ekiyle teslim edilmelidir. Mazeret sınavına girmeyen öğrencilere ikinci bir mazeret hakkı tanınmaz.
+
+Sosyal, kültürel ve sportif faaliyetlerde üniversiteyi ya da ülkeyi temsil etmek üzere görevlendirilen öğrencilere, katılamadıkları sınavlar için birim yönetim kurulu kararıyla mazeret sınavı hakkı verilir.
+
+
+========================================
+8. MÜHENDİSLİK VE DOĞA BİLİMLERİ FAKÜLTESİ
+   (MDBF) – GENEL BİLGİ VE BÖLÜMLER
+========================================
+
+Mühendislik ve Doğa Bilimleri Fakültesi (MDBF), İSTE bünyesindeki en büyük fakültedir. Bünyesinde 11 bölüm barındırmaktadır: Bilgisayar Mühendisliği, Biyomedikal Mühendisliği, Elektrik-Elektronik Mühendisliği, Endüstri Mühendisliği, Enerji Sistemleri Mühendisliği, İnşaat Mühendisliği, Makina Mühendisliği, Mekatronik Mühendisliği, Metalurji ve Malzeme Mühendisliği, Mühendislik Temel Bilimleri ve Petrol ve Doğalgaz Mühendisliği.
+
+MDBF'ye ait belge ve formlara, faaliyet raporlarına ve kalite belgelerine https://iste.edu.tr/mdbf/belge-ve-formlar adresinden ulaşılabilir. Fakülteye ait duyurular https://iste.edu.tr/duyuru-merkezi/mdbf adresinde yayımlanmaktadır. Fakültenin iletişim bilgileri için https://iste.edu.tr/mdbf/iletisim adresi ziyaret edilmelidir.
+
+
+========================================
+9. BİLGİSAYAR MÜHENDİSLİĞİ BÖLÜMÜ (BM)
+   – GENEL BİLGİ
+========================================
+
+Bilgisayar Mühendisliği Bölümü, MDBF bünyesinde yer almakta olup lisans ve yüksek lisans programları yürütmektedir. Bölüme ait duyurular, sınav programları (vize, final, mazeret, tek ders dahil) ve İME (İşletmede Mesleki Eğitim) süreci bilgileri https://iste.edu.tr/duyuru-merkezi/bm adresinde yayımlanmaktadır.
+
+Bölüme ait belge ve formlara https://iste.edu.tr/bm/belge-ve-formlar adresinden, ders kataloğuna ise https://obs.iste.edu.tr/oibs/Bologna adresinden ulaşılabilir.
+
+BM Bölümü'ne özgü bazı önemli duyurular: Bölüm, öğrencilere genel iş ve işlemler ile soru ve bilgi alma konusunda öncelikle https://iste.edu.tr/duyuru-merkezi/bm/2023/09/15/4077 adresindeki rehber duyuruya başvurmalarını tavsiye etmektedir.
+
+
+========================================
+10. ÖNEMLI FORMLAR VE BAĞLANTILAR
+========================================
+
+Aşağıdaki formların tümüne https://iste.edu.tr/oidb/formlar adresinden ulaşılabilir:
+
+- Ders Muafiyeti Başvuru Formu (bölüm başkanlığına dilekçeyle birlikte sunulur)
+- Mazeret Sınavı Başvuru Formu
+- Barınma Sorunu Nedeniyle Mazeret Sınavı Başvuru Formu
+- Dersten Çekilme Talep Formu
+- Kayıt Dondurma Formu
+- Tek Ders Sınavı Başvuru Formu
+- Yabancı Dil Muafiyet Sınavı Başvuru Formu
+- Yaz Okulu Kapsamında Başka Üniversitelerden Ders Alma Başvuru Formu
+- Yatay Geçiş Kesin Kayıt Bildirim Formu
+- 2547 Sayılı Kanunun 44. Maddesinin (c) Fıkrası Kapsamında Ek Sınav Başvuru Formu
+- Genel Talep Formu
+
+Yönetmelik ve yönergelerin tamamına https://iste.edu.tr/oidb/yonetmelik-ve-yonergeler adresinden ulaşılabilir. YÖK mevzuatı için https://www.yok.gov.tr/kurumsal/mevzuat, İSTE'ye özgü mevzuat için ise https://kms.kaysis.gov.tr/Home/Kurum/38689832 adresleri kullanılabilir.
+
+
+========================================
+11. DİLEKÇE ŞEKLİ – GENEL ÖRNEK TASLAK
+    (Muafiyet ve Mazeret İşlemleri İçin)
+========================================
+
+Not: Aşağıdaki taslak, resmi bir form değil genel bir dilekçe örneğidir. Resmi form için https://iste.edu.tr/oidb/formlar adresindeki "Ders Muafiyeti Başvuru Formu"nu indirip kullanınız. Bölümünüze özel ek form şartları olup olmadığını bölüm sekreterliğinden teyit ediniz.
+
+---
+
+[YERLEŞİM YERİ], [TARİH]
+
+[İLGİLİ BÖLÜM BAŞKANLIĞI]
+İSKENDERUN TEKNİK ÜNİVERSİTESİ
+[FAKÜLTE ADI]
+[BÖLÜM ADI] BÖLÜM BAŞKANLIĞI'NA
+
+Üniversitenizin [BÖLÜM ADI] Bölümü'nde [SINIF] sınıf öğrencisiyim. Adım [AD SOYAD], öğrenci numaram [ÖĞRENCİ NO]'dur.
+
+[Daha önce öğrenim gördüğüm üniversite adı ve bölüm] programında başarılı olduğum derslerden dolayı aşağıda belirttiğim ders/derslerden muafiyet talep etmekteyim.
+
+Muafiyet talep ettiğim dersler:
+- [Alınan Ders Adı] → Muafiyet istenen ders: [İSTE'deki Ders Adı]
+
+Ekler:
+1. Not Döküm Belgesi (Transkript) – [onaylı/e-devlet çıktısı]
+2. Ders İçeriği Belgesi
+
+Bilgilerinize arz eder, gereğini saygılarımla talep ederim.
+
+Ad Soyad: [AD SOYAD]
+Öğrenci No: [ÖĞRENCİ NO]
+Bölüm / Sınıf: [BÖLÜM] / [SINIF]
+İletişim: [E-POSTA / TELEFON]
+İmza:
+
+---
+
+
+========================================
+12. İLETİŞİM BİLGİLERİ
+========================================
+
+İskenderun Teknik Üniversitesi (İSTE)
+Merkez Kampüs, 31200, İskenderun, Hatay, Türkiye
+Telefon: 0 (326) 310 10 10 / 0 (326) 310 10 11
+Faks: 0 (326) 613 56 13
+E-Posta: iste@iste.edu.tr
+KEP: iste@hs01.kep.tr
+
+Öğrenci İşleri Daire Başkanlığı: https://iste.edu.tr/oidb
+Mühendislik ve Doğa Bilimleri Fakültesi: https://iste.edu.tr/mdbf
+Bilgisayar Mühendisliği Bölümü: https://iste.edu.tr/bm
+Öğrenci Bilgi Sistemi (OBS): https://obs.iste.edu.tr/
+
+
+================================================================================
+Bu belge; iste.edu.tr, iste.edu.tr/mdbf ve iste.edu.tr/bm siteleri ile bu sitelerde
+yer alan resmi PDF belgeleri (Akademik Takvim, Eğitim-Öğretim ve Sınav Yönetmeliği,
+Sınav Yönergesi, Muafiyet ve İntibak Yönergesi, Yaz Öğretimi Yönergesi) esas alınarak
+derlenmiştir. Güncel ve bağlayıcı bilgi için her zaman resmi üniversite sitesini ve ilgili
+birimleri kontrol ediniz.
+================================================================================
