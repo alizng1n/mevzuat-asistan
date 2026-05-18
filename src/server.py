@@ -800,7 +800,7 @@ E-Postalar:
 """
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-flash-latest",
             contents=prompt
         )
         
