@@ -959,7 +959,8 @@ function App() {
                           </div>
                         ) : (
                           <div 
-                            style={{ color: 'var(--text-primary)', fontSize: '14px', lineHeight: '1.6', fontFamily: 'var(--font-sans)', wordBreak: 'break-word' }}
+                            className="email-reader-content"
+                            style={{ padding: '0 8px' }}
                             dangerouslySetInnerHTML={{ __html: selectedEmail.body || '<i>İçerik bulunamadı veya yüklenemedi.</i>' }}
                           />
                         )}

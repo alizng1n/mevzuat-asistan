@@ -1134,3 +1134,44 @@ body {
   background-color: rgba(255, 235, 59, 0.3);
   color: #b45309;
 }
+
+/* Email Detail HTML Restets */
+.email-reader-content {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: var(--font-main);
+  word-break: break-word;
+}
+
+.email-reader-content * {
+  max-width: 100% !important;
+}
+
+.email-reader-content a {
+  color: var(--accent-blue);
+  text-decoration: underline;
+}
+
+.email-reader-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.email-reader-content table {
+  border-collapse: collapse;
+  width: 100% !important;
+}
+
+.email-reader-content td, .email-reader-content th {
+  border: 1px solid var(--border-color);
+  padding: 8px;
+}
+
+.email-reader-content blockquote {
+  border-left: 3px solid var(--accent-purple);
+  padding-left: 12px;
+  margin-left: 0;
+  color: var(--text-secondary);
+}

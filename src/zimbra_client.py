@@ -239,26 +239,34 @@ def fetch_message(token: str, msg_id: str) -> dict:
     mp = msg.get('mp', {})
     if isinstance(mp, dict):
         mp = [mp]
-    if isinstance(mp, list):
-        for part in mp:
+    def extract_body(parts):
+        html_body = ""
+        plain_body = ""
+        for part in parts:
             ct = part.get('ct', '')
-            if ct == 'text/html' and part.get('content'):
-                body = part.get('content', '')
-                break
-            elif ct == 'text/plain' and part.get('content'):
-                body = part.get('content', '')
+            content = part.get('content', '')
+            if ct == 'text/html' and content:
+                html_body = content
+            elif ct == 'text/plain' and content:
+                plain_body = content
+            
+            # recursive subparts
             sub_parts = part.get('mp', [])
             if isinstance(sub_parts, dict):
                 sub_parts = [sub_parts]
-            if isinstance(sub_parts, list):
-                for sp in sub_parts:
-                    sct = sp.get('ct', '')
-                    if sct == 'text/html' and sp.get('content'):
-                        body = sp.get('content', '')
-                        break
-                    elif sct == 'text/plain' and sp.get('content'):
-                        if not body:
-                            body = sp.get('content', '')
+            if isinstance(sub_parts, list) and sub_parts:
+                sub_html, sub_plain = extract_body(sub_parts)
+                if sub_html: html_body = sub_html
+                if sub_plain and not plain_body: plain_body = sub_plain
+                
+        return html_body, plain_body
+
+    html_b, plain_b = extract_body(mp)
+    body = html_b if html_b else plain_b
+    
+    # If still no body, try to extract from 'fr' (fragment/snippet)
+    if not body:
+        body = msg.get('fr', 'İçerik okunamadı.')
     
     return {
         'id': msg.get('id', ''),
