@@ -1,0 +1,46 @@
+[
+  {
+    "question": "Mazeret sınavına nasıl başvurabilirim?",
+    "answer": "Mazeret sınavına başvurmak için sınav tarihinden itibaren en geç 5 iş günü içerisinde mazeretinizi gösterir belge (örneğin sağlık raporu) ve doldurulmuş Mazeret Sınavı Başvuru Formu ile birlikte Bölüm Başkanlığınıza dilekçe vermeniz gerekmektedir. Dilekçe taslağınızı sistemimizin 'Resmi Dilekçe Oluştur' kısmından hızlıca hazırlayabilir ve çıktısını alabilirsiniz."
+  },
+  {
+    "question": "Ders muafiyeti başvurusu nasıl yapılır?",
+    "answer": "Daha önce başka bir yükseköğretim kurumunda alıp başarılı olduğunuz derslerden muaf olmak için, kayıt yaptırdığınız ilk yarıyılın ilk haftası içinde transkriptiniz ve ders içeriklerinizle birlikte Ders Muafiyeti Talep Formu'nu doldurarak Bölüm Başkanlığınıza başvurmalısınız."
+  },
+  {
+    "question": "Kayıt dondurma işlemi nasıl yapılır?",
+    "answer": "Haklı ve geçerli bir mazeretiniz varsa (sağlık, maddi, ailevi nedenler vb.), ilgili dönemin en geç ders ekleme-çıkarma haftası sonuna kadar Kayıt Dondurma Talep Formu ve mazeret belgeniz ile birlikte ilgili dekanlığa/müdürlüğe başvurmanız gerekmektedir. Kayıt en fazla iki yarıyıl dondurulabilir."
+  },
+  {
+    "question": "Yaz okulunda başka üniversiteden ders alabilir miyim?",
+    "answer": "Evet, İSTE'de açılmayan dersleri, içeriği ve kredisi (AKTS) ilgili bölüm tarafından onaylanması şartıyla, taban puanı İSTE'deki programınızın taban puanına eşit veya yüksek olan diğer üniversitelerden alabilirsiniz. Bunun için Yaz Okulu Başvuru Formu'nu doldurup Bölüm Başkanlığı onayı almanız gerekmektedir."
+  },
+  {
+    "question": "Tek ders sınavına kimler girebilir?",
+    "answer": "Mezuniyeti için stajı hariç tek bir başarısız (FF veya FD) dersi kalan veya tüm derslerinden başarılı olduğu halde mezuniyet için gerekli 2.00 GANO şartını sağlayamayan öğrencilere tek ders sınav hakkı tanınır. Başvurular akademik takvimde belirtilen tarihlerde ilgili birime dilekçe ile yapılır."
+  },
+  {
+    "question": "Kayıt sildirme işlemi nasıl yapılır?",
+    "answer": "Kendi isteğinizle kaydınızı sildirmek için Öğrenci İşleri Daire Başkanlığı'na Kayıt Sildirme Formu ile şahsen başvurmanız veya noter onaylı vekaletname verdiğiniz vekiliniz aracılığıyla başvuru yapmanız gerekmektedir. Kayıt silme işlemi sonrasında lise diplomanız tarafınıza iade edilir."
+  },
+  {
+    "question": "Staj başvurusu nasıl ve ne zaman yapılır?",
+    "answer": "Staj başvuruları, staj yapılacak kurumdan kabul alındıktan sonra, staj başlangıç tarihinden en az 15 gün önce doldurulmuş Staj Başvuru Formu, SGK beyannamesi ve kimlik fotokopisi ile birlikte Bölüm Staj Komisyonuna teslim edilerek yapılır. Stajlar genellikle yaz döneminde akademik tatilde gerçekleştirilir."
+  },
+  {
+    "question": "Dönem harç ödemeleri ne zaman yapılır?",
+    "answer": "Dönem harç ve öğrenim ücreti ödemeleri, akademik takvimde belirtilen ders kayıt haftası içerisinde, öğrenci numaranız ile anlaşmalı banka (Halkbank) ATM'leri veya internet bankacılığı üzerinden yatırılır. Harç yatırılmadan ders kaydı kesinleştirilemez."
+  },
+  {
+    "question": "Ders kayıtları nasıl yapılır?",
+    "answer": "Ders kayıtları, akademik takvimde belirtilen tarihlerde İSTE OBS (Öğrenci Bilgi Sistemi) üzerinden elektronik ortamda yapılır. Öğrenciler önce harç borcu varsa öder, ardından almak istediği dersleri seçer ve danışman onayına gönderir. Danışman onayından sonra kayıt kesinleşir."
+  },
+  {
+    "question": "İME (İşletmede Mesleki Eğitim) nedir ve nasıl başvurulur?",
+    "answer": "İME, öğrencilerin son sınıfta bir dönem boyunca tam zamanlı olarak alanlarıyla ilgili bir işletmede çalışarak pratik deneyim kazanmalarını sağlayan eğitim modelidir. Başvuru için İME Formu doldurulur ve koordinatörlükçe onaylanan anlaşmalı firmalara yerleştirme yapılır."
+  },
+  {
+    "question": "Bütünleme sınavlarına girme şartları nelerdir, finalden kaç alırsam bütünlemeye girebilirim?",
+    "answer": "Bütünleme sınavına girebilmek için öncelikle dersin devam şartını (teorik derslerde %70, uygulamalı derslerde %80) sağlamış olmanız gerekir. İSTE Sınav Yönergesi Madde 17/1-ç uyarınca final barajı 30'dur. Yarıyıl sonu (final) sınavından 30'un altında alan veya vize-final ağırlıklı başarı notu ortalaması başarısız (FF) olan öğrenciler doğrudan kalmış sayılır ve bütünleme sınavına girebilirler."
+  }
+]

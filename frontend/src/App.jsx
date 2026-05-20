@@ -4,7 +4,7 @@ import {
   Send, Search, Plus, CheckCircle2, AlertTriangle, 
   FileText, ArrowRight, User, Users, Sun, Moon, Home,
   Upload, Camera, Check, X, FileCheck, Bell, Mail, ExternalLink,
-  Clock, Info, Loader2, ChevronDown, ChevronUp, Inbox, Lock, LogOut, GraduationCap, Megaphone, Eye, EyeOff, Hourglass
+  Clock, Info, Loader2, ChevronDown, ChevronUp, Inbox, Lock, LogOut, GraduationCap, Megaphone, Eye, EyeOff, Hourglass, MailOpen
 } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
@@ -20,6 +20,7 @@ function App() {
     return savedTheme !== null ? savedTheme === 'dark' : true;
   });
   const [stats, setStats] = useState({ total: 0, ready: 0, review: 0, efficiency: 0 });
+  const [apiKeyStatus, setApiKeyStatus] = useState({ is_available: false, limit: 10.0, usage: 0.0, usage_daily: 0.0, label: '', is_free_tier: false });
   const [drafts, setDrafts] = useState([]);
   const [sources, setSources] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -43,16 +44,23 @@ function App() {
   const [zimbraError, setZimbraError] = useState('');
   const [zimbraEmails, setZimbraEmails] = useState([]);
   const [zimbraStats, setZimbraStats] = useState({ total: 0, academic: 0, announcement: 0, unread: 0 });
-  const [emailFilter, setEmailFilter] = useState('all'); // 'all' | 'academic' | 'announcement'
+  const [emailFilter, setEmailFilter] = useState('academic'); // 'academic' | 'announcement' | 'all'
   const [showPassword, setShowPassword] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [emailDetailLoading, setEmailDetailLoading] = useState(false);
-  const [zimbraDeadlines, setZimbraDeadlines] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('zimbraDeadlines')) || []; } catch { return []; }
-  });
-  const [deadlinesLoading, setDeadlinesLoading] = useState(false);
 
-  const messagesEndRef = useRef(null);
+  // UBOM State
+  const [ubomUsername, setUbomUsername] = useState('');
+  const [ubomPassword, setUbomPassword] = useState('');
+  const [ubomToken, setUbomToken] = useState(() => localStorage.getItem('ubomToken') || '');
+  const [ubomLoggedIn, setUbomLoggedIn] = useState(() => !!localStorage.getItem('ubomToken'));
+  const [ubomLoading, setUbomLoading] = useState(false);
+  const [ubomError, setUbomError] = useState('');
+  const [ubomDeadlines, setUbomDeadlines] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ubomDeadlines')) || []; } catch { return []; }
+  });
+
+  const messagesListRef = useRef(null);
 
   // Dilekçe Modal State
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
@@ -96,20 +104,33 @@ function App() {
     }
   }, [fullname, studentId, phone, department, courseCode, courseName, reason, dateRange, institution, isEdited]);
 
+  const fetchApiKeyStatus = async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/api/api-key-status');
+      setApiKeyStatus(res.data);
+    } catch (e) {
+      console.error("Failed to fetch API key status", e);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchData = async (retries = 5) => {
       try {
-        const [statsRes, draftsRes, sourcesRes, annRes, personnelRes] = await Promise.all([
+        const [statsRes, draftsRes, sourcesRes, annRes, personnelRes, apiStatusRes] = await Promise.all([
           axios.get('http://localhost:8000/api/stats'),
           axios.get('http://localhost:8000/api/drafts'),
           axios.get('http://localhost:8000/api/sources'),
           axios.get('http://localhost:8000/api/announcements'),
-          axios.get('http://localhost:8000/api/personnel')
+          axios.get('http://localhost:8000/api/personnel'),
+          axios.get('http://localhost:8000/api/api-key-status').catch(() => ({ data: { is_available: false } }))
         ]);
         setStats(statsRes.data);
         setDrafts(draftsRes.data);
         setSources(sourcesRes.data);
         setAnnouncements(annRes.data);
+        if (apiStatusRes && apiStatusRes.data) {
+          setApiKeyStatus(apiStatusRes.data);
+        }
         const formatDept = (dept) => {
           if (!dept) return dept;
           const d = dept.trim().toUpperCase();
@@ -127,6 +148,10 @@ function App() {
         setPersonnel(personnelRes.data.map(p => ({ ...p, department: formatDept(p.department) })));
       } catch (err) {
         console.error("Failed to fetch data", err);
+        if (retries > 0) {
+          console.log(`Sunucu henüz hazır değil, tekrar deneniyor... (${retries} deneme kaldı)`);
+          setTimeout(() => fetchData(retries - 1), 2000);
+        }
       }
     };
     fetchData();
@@ -149,6 +174,13 @@ function App() {
       }
     };
     checkZimbraSession();
+
+    const token = localStorage.getItem('ubomToken');
+    if (token) {
+      // Because fetchUbomData uses state setters, we inline the fetch logic or rely on hoisting.
+      // But fetchUbomData is defined below. Let's just do a direct axios call here to avoid dependency issues.
+      fetchUbomData(token);
+    }
   }, []);
 
   const fetchZimbraData = async (emailToFetch) => {
@@ -158,44 +190,61 @@ function App() {
       const inboxRes = await axios.post('http://localhost:8000/api/zimbra/inbox', { email: emailToFetch });
       setZimbraEmails(inboxRes.data.emails);
       setZimbraStats(inboxRes.data.stats);
-
-      // Tüm e-postaları tara (academic + announcement) — ödev bildirimleri her kategoride olabilir
-      const relevantEmails = inboxRes.data.emails.filter(e => e.category === 'academic' || e.category === 'announcement');
-      if (relevantEmails.length > 0) {
-        setDeadlinesLoading(true);
-        const reqEmails = relevantEmails.slice(0, 15).map(e => ({
-          id: e.id,
-          subject: e.subject,
-          body: e.body || e.snippet,
-          date: e.date
-        }));
-        try {
-          const deadlinesRes = await axios.post('http://localhost:8000/api/zimbra/extract-deadlines', { emails: reqEmails });
-          const newDeadlines = deadlinesRes.data.deadlines || [];
-          if (newDeadlines.length > 0) {
-            setZimbraDeadlines(newDeadlines);
-            localStorage.setItem('zimbraDeadlines', JSON.stringify(newDeadlines));
-          } else if (deadlinesRes.data.error) {
-            // API hatası varsa (kota vb.) mevcut cache'i koru
-            console.warn('Deadline API hatası, cache korunuyor:', deadlinesRes.data.error);
-          } else {
-            // Gerçekten hiç deadline bulunamadı
-            setZimbraDeadlines([]);
-            localStorage.setItem('zimbraDeadlines', '[]');
-          }
-        } catch (e) {
-          // API tamamen başarısız olduysa mevcut cache'deki deadline'ları koru
-          console.error('Deadline extraction failed, keeping cache:', e);
-        }
-        setDeadlinesLoading(false);
-      }
     } catch(err) {
       setZimbraError(err.response?.data?.detail || 'E-postalar yüklenemedi.');
       if (err?.response?.status === 401) {
         setZimbraLoggedIn(false);
       }
+    } finally {
+      setZimbraLoading(false);
     }
-    setZimbraLoading(false);
+  };
+
+  const fetchUbomData = async (token) => {
+    setUbomLoading(true);
+    setUbomError('');
+    try {
+      const res = await axios.post('http://localhost:8000/api/ubom/deadlines', { token });
+      setUbomDeadlines(res.data.deadlines || []);
+      localStorage.setItem('ubomDeadlines', JSON.stringify(res.data.deadlines || []));
+    } catch(err) {
+      setUbomError(err.response?.data?.detail || 'UBOM etkinlikleri yüklenemedi.');
+      if (err.response?.status === 400 || err.response?.status === 401) {
+        handleUbomLogout();
+      }
+    } finally {
+      setUbomLoading(false);
+    }
+  };
+
+  const handleUbomLogin = async (e) => {
+    if (e) e.preventDefault();
+    setUbomLoading(true);
+    setUbomError('');
+    try {
+      const res = await axios.post('http://localhost:8000/api/ubom/login', {
+        username: ubomUsername,
+        password: ubomPassword
+      });
+      if (res.data.success && res.data.token) {
+        setUbomToken(res.data.token);
+        setUbomLoggedIn(true);
+        localStorage.setItem('ubomToken', res.data.token);
+        fetchUbomData(res.data.token);
+      }
+    } catch (err) {
+      setUbomError(err.response?.data?.detail || 'UBOM girişi başarısız. Bilgilerinizi kontrol edin.');
+    } finally {
+      setUbomLoading(false);
+    }
+  };
+
+  const handleUbomLogout = () => {
+    setUbomLoggedIn(false);
+    setUbomToken('');
+    setUbomDeadlines([]);
+    localStorage.removeItem('ubomToken');
+    localStorage.removeItem('ubomDeadlines');
   };
 
   useEffect(() => {
@@ -209,20 +258,27 @@ function App() {
   }, [isDarkMode]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesListRef.current) {
+      messagesListRef.current.scrollTo({
+        top: messagesListRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
   };
 
   const handleDeadlineClick = async (task) => {
-    setIsChatMode(false); 
-    setActiveTab('emails');
     const email = zimbraEmails.find(e => e.id === task.email_id);
     if (email && email.body) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(email.body, 'text/html');
       const links = Array.from(doc.querySelectorAll('a'));
-      const ubomLink = links.find(a => a.textContent.includes('Etkinliğe git') || a.href.includes('ubom'));
+      const ubomLink = links.find(a => {
+        const href = a.getAttribute('href') || '';
+        return a.textContent.includes('Etkinliğe git') || href.includes('ubom');
+      });
       if (ubomLink) {
-        window.open(ubomLink.href, '_blank');
+        const href = ubomLink.getAttribute('href') || '';
+        window.open(href, '_blank');
         return;
       }
     }
@@ -232,7 +288,13 @@ function App() {
       try {
         const res = await axios.post('http://localhost:8000/api/zimbra/message', { email: zimbraEmail, msg_id: email.id });
         setSelectedEmail({...email, ...res.data});
-      } catch (err) {}
+      } catch (err) {
+        if (err.response?.status === 401) {
+          setZimbraLoggedIn(false);
+          localStorage.removeItem('zimbraEmail');
+          setSelectedEmail(null);
+        }
+      }
       setEmailDetailLoading(false);
     }
   };
@@ -252,49 +314,20 @@ function App() {
     const textToSend = typeof customMessage === 'string' ? customMessage : input;
     if (!textToSend.trim()) return;
 
-    // Add user message
     const newMessages = [...messages, { role: 'user', content: textToSend }];
     setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
-    let contextStr = `Aktif Sayfa: ${activeTab === 'dashboard' ? 'Ana Sayfa (Dilekçe Formu)' : activeTab === 'directory' ? 'Akademik Kadro Rehberi' : 'Gelen E-postalar'}\n`;
-    // Kadro bilgileri (her zaman gönder, sadece aktif tab'da değil)
-    if (personnel && personnel.length > 0) {
-      const lightPersonnel = personnel.map(p => `${p.name} - ${p.title || ''} (${p.department || ''}) - ${p.email || ''}`).join('\n');
-      contextStr += `Akademik Kadro Listesi:\n${lightPersonnel.substring(0, 6000)}\n`;
-    }
-    // E-posta bilgileri (snippet dahil)
-    if (zimbraEmails && zimbraEmails.length > 0) {
-      const lightEmails = zimbraEmails.map(e => `Gönderen: ${e.from_name || e.from_address}, Konu: ${e.subject}, Tarih: ${e.date}${e.snippet ? ', Özet: ' + e.snippet.substring(0, 120) : ''}`).join('\n');
-      contextStr += `Kullanıcının E-postaları (${zimbraEmails.length} adet):\n${lightEmails.substring(0, 5000)}\n`;
-    }
-    // Ödev/Deadline bilgileri
-    if (zimbraDeadlines && zimbraDeadlines.length > 0) {
-       const now = new Date();
-       const lightDeadlines = zimbraDeadlines.map(d => {
-         const dl = new Date(d.deadline);
-         const diffDays = Math.ceil((dl - now) / (1000 * 60 * 60 * 24));
-         const status = diffDays < 0 ? `${Math.abs(diffDays)} gün gecikmiş` : diffDays === 0 ? 'BUGÜN SON' : `${diffDays} gün kaldı`;
-         return `Ödev: ${d.title}, Teslim: ${d.deadline}, Durum: ${status}`;
-       }).join('\n');
-       contextStr += `Kullanıcının Yaklaşan Ödevleri:\n${lightDeadlines}\n`;
-    }
-    // Duyurular
-    if (announcements && announcements.length > 0) {
-      const lightAnn = announcements.map(a => `- ${a.title} (${a.date || 'tarih yok'})`).join('\n');
-      contextStr += `İSTE Güncel Duyuruları:\n${lightAnn}\n`;
-    }
-    // Kaynak dokümanlar
-    if (sources && sources.length > 0) {
-      contextStr += `Sistemde Yüklü Dokümanlar: ${sources.join(', ')}\n`;
-    }
-
     try {
       const response = await axios.post('http://localhost:8000/api/chat', {
         message: textToSend,
         history: messages,
-        context: contextStr
+        context: `Aktif Sayfa: ${activeTab === 'dashboard' ? 'Ana Sayfa (Dilekçe Formu)' : activeTab === 'directory' ? 'Akademik Kadro Rehberi' : 'Gelen E-postalar'}\n`,
+        zimbra_email: zimbraEmail,
+        emails: zimbraEmails,
+        deadlines: ubomDeadlines,
+        announcements: announcements
       });
 
       setMessages([...newMessages, { 
@@ -326,6 +359,7 @@ function App() {
       }]);
     } finally {
       setIsLoading(false);
+      fetchApiKeyStatus();
     }
   };
 
@@ -550,48 +584,105 @@ function App() {
           )}
         </button>
 
-        {zimbraLoggedIn && (
-          <div style={{ marginBottom: '32px' }}>
-            <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', paddingLeft: '12px' }}>
-              Yaklaşan Ödevler
-            </h4>
-            {deadlinesLoading ? (
-              <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Loader2 size={14} className="spinning" /> Analiz ediliyor...
-              </div>
-            ) : zimbraDeadlines.length === 0 ? (
-              <div style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', borderLeft: '3px solid var(--border-color)' }}>
-                Yaklaşan ödev bulunamadı.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {zimbraDeadlines.map((task, idx) => {
-                  const deadlineDate = new Date(task.deadline);
-                  const now = new Date();
-                  const diffTime = deadlineDate - now;
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  
-                  let statusColor = '#10b981'; // Green
-                  let statusText = `${diffDays} gün kaldı`;
-                  
-                  if (diffDays === 0) { statusColor = '#f59e0b'; statusText = 'Bugün son!'; }
-                  else if (diffDays < 0) { statusColor = '#ef4444'; statusText = `${Math.abs(diffDays)} gün gecikti`; }
-                  else if (diffDays <= 3) { statusColor = '#f59e0b'; }
+        <div style={{ marginBottom: '32px' }}>
+          <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px', paddingLeft: '12px' }}>
+            Yaklaşan Ödevler (UBOM)
+          </h4>
+          {!ubomLoggedIn ? (
+            <div style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', borderLeft: '3px solid var(--border-color)' }}>
+              Lütfen Ana Sayfadan UBOM'a bağlanın.
+            </div>
+          ) : ubomLoading ? (
+            <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Loader2 size={14} className="spinning" /> Yükleniyor...
+            </div>
+          ) : ubomDeadlines.length === 0 ? (
+            <div style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', borderLeft: '3px solid var(--border-color)' }}>
+              Yaklaşan ödev bulunamadı.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {ubomDeadlines.map((task, idx) => {
+                const deadlineDate = new Date(task.deadline);
+                const now = new Date();
+                const diffTime = deadlineDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                let statusColor = '#10b981'; // Green
+                let statusText = `${diffDays} gün kaldı`;
+                
+                if (diffDays === 0) { statusColor = '#f59e0b'; statusText = 'Bugün son!'; }
+                else if (diffDays < 0) { statusColor = '#ef4444'; statusText = `${Math.abs(diffDays)} gün gecikti`; }
+                else if (diffDays <= 3) { statusColor = '#f59e0b'; }
 
-                  return (
-                    <div key={idx} onClick={() => handleDeadlineClick(task)} style={{
-                      background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '10px 12px',
-                      borderLeft: `3px solid ${statusColor}`, cursor: 'pointer', transition: 'all 0.2s'
-                    }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
-                      <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {task.title}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: statusColor, fontWeight: '500' }}>
-                        <Hourglass size={12} /> {statusText}
-                      </div>
+                return (
+                  <div key={idx} onClick={() => { if (task.url) window.open(task.url, '_blank') }} style={{
+                    background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '10px 12px',
+                    borderLeft: `3px solid ${statusColor}`, cursor: task.url ? 'pointer' : 'default', transition: 'all 0.2s'
+                  }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'} onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {task.name}
                     </div>
-                  );
-                })}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: statusColor, fontWeight: '500' }}>
+                      <Hourglass size={12} /> {statusText}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {apiKeyStatus.is_available && (
+          <div style={{ 
+            background: 'rgba(2, 132, 199, 0.05)', 
+            border: '1px solid var(--border-color)',
+            borderRadius: '12px', 
+            padding: '12px', 
+            marginBottom: '16px',
+            fontSize: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: '500' }}>
+              <span>API Harcaması</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
+                ${apiKeyStatus.usage.toFixed(4)}
+              </span>
+            </div>
+            
+            {apiKeyStatus.limit ? (
+              <>
+                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
+                  <div style={{ 
+                    width: `${Math.min((apiKeyStatus.usage / apiKeyStatus.limit) * 100, 100)}%`, 
+                    height: '100%', 
+                    background: (apiKeyStatus.usage / apiKeyStatus.limit) > 0.8 ? '#ef4444' : '#0284c7',
+                    transition: 'width 0.3s ease'
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  <span>Bugün: ${apiKeyStatus.usage_daily.toFixed(4)}</span>
+                  <span>Limit: ${apiKeyStatus.limit.toFixed(2)}</span>
+                </div>
+                <div style={{ 
+                  textAlign: 'center', 
+                  fontSize: '10px', 
+                  fontWeight: '600', 
+                  color: (apiKeyStatus.limit - apiKeyStatus.usage) <= 0.85 ? '#ef4444' : '#10b981',
+                  marginTop: '6px',
+                  paddingTop: '6px',
+                  borderTop: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  {(apiKeyStatus.limit - apiKeyStatus.usage) <= 0 ? (
+                    <span>⚠️ Limit Aşıldı!</span>
+                  ) : (
+                    <span>Kalan Kullanım: ${(apiKeyStatus.limit - apiKeyStatus.usage).toFixed(4)}</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Bugün: ${apiKeyStatus.usage_daily.toFixed(4)}</span>
+                <span>Limitsiz</span>
               </div>
             )}
           </div>
@@ -634,58 +725,77 @@ function App() {
 
               <div className="stats-grid">
                 <div className="stat-card">
-                  <div className="stat-title">TOPLAM DILEKÇE</div>
-                  <div className="stat-value white">{stats.total}</div>
+                  <div className="stat-title">OKUNMAMIŞ E-POSTALAR</div>
+                  <div className="stat-value white">{zimbraStats.unread}</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-title">DIŞA AKTARILMAYA HAZIR</div>
-                  <div className="stat-value cyan">{stats.ready}</div>
+                  <div className="stat-title">YAKLAŞAN ETKİNLİKLER</div>
+                  <div className="stat-value cyan">{ubomDeadlines.length}</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-title">İNCELEMEDE</div>
-                  <div className="stat-value purple">{stats.review}</div>
+                  <div className="stat-title">AKADEMİK PERSONEL</div>
+                  <div className="stat-value purple">{personnel.length}</div>
                 </div>
               </div>
 
-              {/* Yaklaşan Ödevler Section (Dashboard) - Zimbra oturumu açıkken her zaman gösterilir */}
-              {zimbraLoggedIn && (
-                <div className="cards-grid" style={{ marginBottom: '32px' }}>
-                  <div className="dashboard-card" style={{ gridColumn: '1 / -1', padding: '0', overflow: 'hidden', borderLeft: '3px solid #f59e0b' }}>
-                    <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {/* Yaklaşan Ödevler Section (Dashboard) */}
+              <div className="cards-grid" style={{ marginBottom: '32px' }}>
+                <div className="dashboard-card" style={{ gridColumn: '1 / -1', padding: '0', overflow: 'hidden', borderLeft: '3px solid #f59e0b' }}>
+                  <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <Hourglass size={18} style={{ color: '#f59e0b' }} />
-                      <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0 }}>Yaklaşan Ödevler & Görevler</h3>
+                      <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0 }}>Yaklaşan Ödevler & Etkinlikler (UBOM)</h3>
                     </div>
-                    <div style={{ padding: '16px 24px' }}>
-                      {deadlinesLoading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px' }}>
-                          <Loader2 size={16} className="spinning" /> Ödevler analiz ediliyor...
+                    {ubomLoggedIn && (
+                      <button onClick={handleUbomLogout} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <LogOut size={12} /> Çıkış Yap
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ padding: '16px 24px' }}>
+                    {!ubomLoggedIn ? (
+                      <form onSubmit={handleUbomLogin} style={{ display: 'flex', gap: '16px', alignItems: 'center', background: 'rgba(2, 132, 199, 0.05)', padding: '20px', borderRadius: '16px', border: '1px solid rgba(2, 132, 199, 0.15)' }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: 'var(--text-primary)' }}>UBOM'a Bağlan</h4>
+                          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>Ödev ve etkinliklerinizi senkronize etmek için UBOM bilgilerinizi girin.</p>
                         </div>
-                      ) : zimbraDeadlines.length === 0 ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 0' }}>
-                          <Hourglass size={16} style={{ opacity: 0.5 }} /> Yaklaşan ödev bulunamadı.
-                        </div>
-                      ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                          {zimbraDeadlines.map((task, idx) => {
-                            const deadlineDate = new Date(task.deadline);
-                            const now = new Date();
-                            const diffTime = deadlineDate - now;
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                            
-                            let statusColor = '#10b981';
-                            let statusText = `${diffDays} gün kaldı`;
-                            
-                            if (diffDays === 0) { statusColor = '#f59e0b'; statusText = 'Bugün son!'; }
-                            else if (diffDays < 0) { statusColor = '#ef4444'; statusText = `${Math.abs(diffDays)} gün gecikti`; }
-                            else if (diffDays <= 3) { statusColor = '#f59e0b'; }
+                        <input type="text" placeholder="UBOM Kullanıcı Adı" value={ubomUsername} onChange={e => setUbomUsername(e.target.value)} className="modern-input" style={{ width: '220px' }} required />
+                        <input type="password" placeholder="UBOM Şifre" value={ubomPassword} onChange={e => setUbomPassword(e.target.value)} className="modern-input" style={{ width: '220px' }} required />
+                        <button type="submit" className="btn-primary" disabled={ubomLoading} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '10px' }}>
+                          {ubomLoading ? <Loader2 size={16} className="spinning" /> : 'Bağlan'}
+                        </button>
+                        {ubomError && <span style={{ color: '#ef4444', fontSize: '13px', position: 'absolute', bottom: '16px' }}>{ubomError}</span>}
+                      </form>
+                    ) : ubomLoading ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                        <Loader2 size={16} className="spinning" /> Takvim yükleniyor...
+                      </div>
+                    ) : ubomDeadlines.length === 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '14px', padding: '8px 0' }}>
+                        <Hourglass size={16} style={{ opacity: 0.5 }} /> Yaklaşan ödev veya etkinlik bulunamadı.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                        {ubomDeadlines.map((task, idx) => {
+                          const deadlineDate = new Date(task.deadline);
+                          const now = new Date();
+                          const diffTime = deadlineDate - now;
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          
+                          let statusColor = '#10b981';
+                          let statusText = `${diffDays} gün kaldı`;
+                          
+                          if (diffDays === 0) { statusColor = '#f59e0b'; statusText = 'Bugün son!'; }
+                          else if (diffDays < 0) { statusColor = '#ef4444'; statusText = `${Math.abs(diffDays)} gün gecikti`; }
+                          else if (diffDays <= 3) { statusColor = '#f59e0b'; }
 
-                            return (
-                              <div key={idx} onClick={() => handleDeadlineClick(task)} style={{
-                                background: 'var(--bg-sidebar)', borderRadius: '8px', padding: '12px 16px',
-                                borderLeft: `3px solid ${statusColor}`, cursor: 'pointer', transition: 'all 0.2s',
-                                display: 'flex', flexDirection: 'column', gap: '6px'
+                          return (
+                            <div key={idx} onClick={() => { if (task.url) window.open(task.url, '_blank') }} style={{
+                              background: 'var(--bg-sidebar)', borderRadius: '8px', padding: '12px 16px',
+                              borderLeft: `3px solid ${statusColor}`, cursor: task.url ? 'pointer' : 'default', transition: 'all 0.2s',
+                              display: 'flex', flexDirection: 'column', gap: '6px'
                               }} onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                                <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{task.title}</div>
+                                <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>{task.name}</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: statusColor, fontWeight: '500' }}>
                                   <Hourglass size={14} /> {statusText}
                                 </div>
@@ -697,7 +807,6 @@ function App() {
                     </div>
                   </div>
                 </div>
-              )}
 
               {/* Announcements Section */}
               <div className="cards-grid" style={{ marginBottom: '32px' }}>
@@ -997,8 +1106,14 @@ function App() {
                     <Loader2 size={14} className={zimbraLoading ? 'spinning' : ''} /> Yenile
                   </button>
                   <button className="btn-secondary" onClick={async () => {
-                    try { await axios.post('http://localhost:8000/api/zimbra/logout', { email: zimbraEmail, password: '' }); } catch(e) {}
-                    setZimbraLoggedIn(false); setZimbraEmails([]); setZimbraStats({ total: 0, academic: 0, announcement: 0, unread: 0 });
+                    try { await axios.post('http://localhost:8000/api/zimbra/logout', { email: zimbraEmail || localStorage.getItem('zimbraEmail'), password: '' }); } catch(e) {}
+                    setZimbraLoggedIn(false); 
+                    setZimbraEmails([]); 
+                    setZimbraStats({ total: 0, academic: 0, announcement: 0, unread: 0 });
+                    setZimbraDeadlines([]);
+                    setZimbraEmail('');
+                    localStorage.removeItem('zimbraEmail');
+                    localStorage.removeItem('zimbraDeadlines');
                   }} style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444' }}>
                     <LogOut size={14} /> Çıkış
                   </button>
@@ -1063,138 +1178,147 @@ function App() {
               </div>
             ) : (
               /* E-Posta Listesi */
-              <>
-                {/* Filtre Tabları */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                  {[
-                    { key: 'all', label: 'Tümü', count: zimbraStats.total, icon: <Inbox size={14} /> },
-                    { key: 'academic', label: 'Hocalardan', count: zimbraStats.academic, icon: <GraduationCap size={14} />, color: '#10b981' },
-                    { key: 'announcement', label: 'Duyurular', count: zimbraStats.announcement, icon: <Megaphone size={14} />, color: '#f59e0b' }
-                  ].map(tab => (
-                    <button key={tab.key} onClick={() => setEmailFilter(tab.key)} style={{
-                      padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-                      border: emailFilter === tab.key ? '2px solid ' + (tab.color || 'var(--accent-blue)') : '1px solid var(--border-color)',
-                      background: emailFilter === tab.key ? (tab.color || 'var(--accent-blue)') + '18' : 'transparent',
-                      color: emailFilter === tab.key ? (tab.color || 'var(--accent-blue)') : 'var(--text-secondary)',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
-                    }}>
-                      {tab.icon} {tab.label} <span style={{ opacity: 0.7 }}>({tab.count})</span>
-                    </button>
-                  ))}
+              <div className="email-split-layout" style={{ display: 'flex', gap: '24px', alignItems: 'stretch', minHeight: '520px' }}>
+                {/* Sol Taraf: Liste */}
+                <div style={{ flex: '1.5', minWidth: '360px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* Filtre Tabları */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    {[
+                      { key: 'academic', label: 'Hocalar', count: zimbraStats.academic, icon: <GraduationCap size={14} />, color: '#10b981' },
+                      { key: 'announcement', label: 'Duyurular', count: zimbraStats.announcement, icon: <Megaphone size={14} />, color: '#f59e0b' },
+                      { key: 'all', label: 'Tümü', count: zimbraStats.total, icon: <Inbox size={14} /> }
+                    ].map(tab => (
+                      <button key={tab.key} onClick={() => setEmailFilter(tab.key)} style={{
+                        padding: '8px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
+                        border: emailFilter === tab.key ? '2px solid ' + (tab.color || 'var(--accent-blue)') : '1px solid var(--border-color)',
+                        background: emailFilter === tab.key ? (tab.color || 'var(--accent-blue)') + '18' : 'transparent',
+                        color: emailFilter === tab.key ? (tab.color || 'var(--accent-blue)') : 'var(--text-secondary)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s'
+                      }}>
+                        {tab.icon} {tab.label} <span style={{ opacity: 0.7 }}>({tab.count})</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {zimbraLoading ? (
+                    <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+                      <Loader2 size={32} className="spinning" style={{ marginBottom: '12px' }} />
+                      <p>E-postalar yükleniyor...</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '72vh', overflowY: 'auto', paddingRight: '6px' }}>
+                      {zimbraEmails.filter(e => emailFilter === 'all' || e.category === emailFilter).map((email, idx) => {
+                        const isSelected = selectedEmail && selectedEmail.id === email.id;
+                        return (
+                          <div key={email.id || idx} className="dashboard-card" style={{
+                            padding: '16px 20px', display: 'flex', gap: '14px', alignItems: 'flex-start',
+                            cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
+                            borderLeft: email.category === 'academic' ? '3px solid #10b981' : email.category === 'announcement' ? '3px solid #f59e0b' : '3px solid var(--border-color)',
+                            border: isSelected ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                            background: isSelected ? 'rgba(2, 132, 199, 0.04)' : 'var(--bg-card)',
+                            opacity: email.is_read ? 0.75 : 1
+                          }}
+                          onClick={async () => {
+                            setEmailDetailLoading(true);
+                            setSelectedEmail(email); // temporary set for UI feedback
+                            try {
+                              const res = await axios.post('http://localhost:8000/api/zimbra/message', { email: zimbraEmail, msg_id: email.id });
+                              setSelectedEmail({...email, ...res.data});
+                            } catch (err) {
+                              console.error("Failed to load message", err);
+                            }
+                            setEmailDetailLoading(false);
+                          }}
+                          onMouseOver={(e) => { if (!isSelected) { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'; } }}
+                          onMouseOut={(e) => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = ''; }}
+                          >
+                            <div style={{
+                              width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+                              background: email.category === 'academic' ? 'rgba(16,185,129,0.12)' : email.category === 'announcement' ? 'rgba(245,158,11,0.12)' : 'rgba(2,132,199,0.1)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                              {email.category === 'academic' ? <GraduationCap size={18} color="#10b981" /> : email.category === 'announcement' ? <Megaphone size={18} color="#f59e0b" /> : <Mail size={18} color="var(--accent-blue)" />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: email.is_read ? '500' : '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>
+                                  {email.from_name || email.from_address}
+                                </span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)', flexShrink: 0, marginLeft: '8px' }}>{email.date}</span>
+                              </div>
+                              <div style={{ fontSize: '14px', fontWeight: email.is_read ? '400' : '600', color: 'var(--text-primary)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {!email.is_read && <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#0284c7', marginRight: '6px' }}></span>}
+                                {email.subject}
+                              </div>
+                              {email.snippet && (
+                                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email.snippet}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {zimbraEmails.filter(e => emailFilter === 'all' || e.category === emailFilter).length === 0 && (
+                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                          Bu kategoride e-posta bulunamadı.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {zimbraLoading ? (
-                  <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
-                    <Loader2 size={32} className="spinning" style={{ marginBottom: '12px' }} />
-                    <p>E-postalar yükleniyor...</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {zimbraEmails.filter(e => emailFilter === 'all' || e.category === emailFilter).map((email, idx) => (
-                      <div key={email.id || idx} className="dashboard-card" style={{
-                        padding: '16px 20px', display: 'flex', gap: '14px', alignItems: 'flex-start',
-                        cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
-                        borderLeft: email.category === 'academic' ? '3px solid #10b981' : email.category === 'announcement' ? '3px solid #f59e0b' : '3px solid var(--border-color)',
-                        opacity: email.is_read ? 0.75 : 1
-                      }}
-                      onClick={async () => {
-                        setEmailDetailLoading(true);
-                        setSelectedEmail(email); // temporary set for UI feedback
-                        try {
-                          const res = await axios.post('http://localhost:8000/api/zimbra/message', { email: zimbraEmail, msg_id: email.id });
-                          setSelectedEmail({...email, ...res.data});
-                        } catch (err) {
-                          console.error("Failed to load message", err);
-                          // Still show partial email if fails
-                        }
-                        setEmailDetailLoading(false);
-                      }}
-                      onMouseOver={(e) => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'; }}
-                      onMouseOut={(e) => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = ''; }}
-                      >
-                        <div style={{
-                          width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
-                          background: email.category === 'academic' ? 'rgba(16,185,129,0.12)' : email.category === 'announcement' ? 'rgba(245,158,11,0.12)' : 'rgba(2,132,199,0.1)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                          {email.category === 'academic' ? <GraduationCap size={18} color="#10b981" /> : email.category === 'announcement' ? <Megaphone size={18} color="#f59e0b" /> : <Mail size={18} color="var(--accent-blue)" />}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '13px', fontWeight: email.is_read ? '500' : '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>
-                              {email.from_name || email.from_address}
-                            </span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)', flexShrink: 0, marginLeft: '8px' }}>{email.date}</span>
-                          </div>
-                          <div style={{ fontSize: '14px', fontWeight: email.is_read ? '400' : '600', color: 'var(--text-primary)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {!email.is_read && <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#0284c7', marginRight: '6px' }}></span>}
-                            {email.subject}
-                          </div>
-                          {email.snippet && (
-                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email.snippet}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {zimbraEmails.filter(e => emailFilter === 'all' || e.category === emailFilter).length === 0 && (
-                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-                        Bu kategoride e-posta bulunamadı.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Email Reader Modal */}
-                {selectedEmail && (
-                  <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex',
-                    alignItems: 'center', justifyContent: 'center', padding: '20px'
-                  }}>
+                {/* Sağ Taraf: Detay Görünümü */}
+                <div style={{ flex: '1', minWidth: '300px', position: 'sticky', top: '10px' }}>
+                  {selectedEmail ? (
                     <div className="dashboard-card" style={{
-                      width: '100%', maxWidth: '800px', maxHeight: '90vh',
-                      background: 'var(--bg-card)', display: 'flex', flexDirection: 'column',
-                      overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
-                      border: '1px solid var(--border-color)', borderRadius: '16px'
+                      padding: '24px', height: '100%', minHeight: '480px', display: 'flex', flexDirection: 'column',
+                      border: '1px solid var(--border-color)', borderRadius: '16px', background: 'var(--bg-card)', overflow: 'hidden'
                     }}>
-                      <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: 'var(--text-primary)' }}>{selectedEmail.subject}</h3>
-                          <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            <span style={{ fontWeight: '600' }}>Gönderen: {selectedEmail.from_name || selectedEmail.from_address}</span>
-                            <span>Tarih: {selectedEmail.date}</span>
-                          </div>
+                      <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: 'var(--text-primary)', fontWeight: '700' }}>{selectedEmail.subject}</h3>
+                          <button onClick={() => setSelectedEmail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px', display: 'flex', alignItems: 'center' }}>
+                            <X size={18} />
+                          </button>
                         </div>
-                        <button onClick={() => setSelectedEmail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', transition: 'background 0.2s' }}
-                          onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
-                          onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                        ><X size={24} /></button>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 16px', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                          <span style={{ fontWeight: '600' }}>Gönderen: {selectedEmail.from_name || selectedEmail.from_address}</span>
+                          <span>Tarih: {selectedEmail.date}</span>
+                        </div>
                       </div>
-                      
-                      <div style={{ padding: '24px', overflowY: 'auto', flex: 1, background: 'var(--bg-main)' }}>
+                      <div className="email-reader-scroll" style={{ flex: 1, overflowY: 'auto', maxHeight: '55vh', paddingRight: '8px' }}>
                         {emailDetailLoading ? (
-                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-                            <Loader2 className="spinning" size={32} />
+                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '200px' }}>
+                            <Loader2 className="spinning" size={24} style={{ color: 'var(--accent-blue)' }} />
                           </div>
                         ) : (
                           <div 
                             className="email-reader-content"
-                            style={{ padding: '0 8px' }}
-                            dangerouslySetInnerHTML={{ __html: selectedEmail.body || '<i>İçerik bulunamadı veya yüklenemedi.</i>' }}
+                            style={{ color: 'var(--text-primary)', fontSize: '14px', lineHeight: '1.6' }}
+                            dangerouslySetInnerHTML={{ __html: selectedEmail.body || '<i>İçerik yüklenemedi.</i>' }}
                           />
                         )}
                       </div>
                     </div>
-                  </div>
-                )}
-              </>
+                  ) : (
+                    <div className="dashboard-card" style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      height: '100%', minHeight: '480px', border: '1.5px dashed var(--border-color)', borderRadius: '16px',
+                      color: 'var(--text-secondary)', padding: '40px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.01)'
+                    }}>
+                      <MailOpen size={44} style={{ opacity: 0.25, marginBottom: '16px', color: 'var(--accent-blue)' }} />
+                      <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)', fontSize: '15px' }}>E-posta Önizleme</h4>
+                      <p style={{ margin: 0, fontSize: '12px', maxWidth: '280px' }}>Detayları ve e-posta içeriğini görüntülemek için soldaki listeden bir öğeye tıklayın.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         ) : null
         ) : (
           /* Chat Interface */
           <div className="chat-container">
-            <div className="messages-list">
+            <div className="messages-list" ref={messagesListRef}>
               {messages.length === 0 && (
                 <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '40px' }}>
                   <img src="/iste_logo.png" alt="İSTE Logo" style={{ width: '48px', height: '48px', opacity: 0.8, marginBottom: '16px' }} />
@@ -1337,7 +1461,6 @@ function App() {
                   </div>
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             <div className="chat-input-wrapper">
@@ -1362,6 +1485,50 @@ function App() {
               <button className="send-btn" onClick={handleSendMessage} disabled={isLoading || !input.trim()}>
                 <Send size={16} />
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Email Reader Modal (Global) */}
+        {selectedEmail && activeTab !== 'emails' && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex',
+            alignItems: 'center', justifyContent: 'center', padding: '20px'
+          }}>
+            <div className="dashboard-card" style={{
+              width: '100%', maxWidth: '800px', maxHeight: '90vh',
+              background: 'var(--bg-card)', display: 'flex', flexDirection: 'column',
+              overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+              border: '1px solid var(--border-color)', borderRadius: '16px'
+            }}>
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: 'var(--text-primary)' }}>{selectedEmail.subject}</h3>
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    <span style={{ fontWeight: '600' }}>Gönderen: {selectedEmail.from_name || selectedEmail.from_address}</span>
+                    <span>Tarih: {selectedEmail.date}</span>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedEmail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', transition: 'background 0.2s' }}
+                  onMouseOver={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                  onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                ><X size={24} /></button>
+              </div>
+              
+              <div style={{ padding: '24px', overflowY: 'auto', flex: 1, background: 'var(--bg-main)' }}>
+                {emailDetailLoading ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-secondary)' }}>
+                    <Loader2 className="spinning" size={32} />
+                  </div>
+                ) : (
+                  <div 
+                    className="email-reader-content"
+                    style={{ padding: '0 8px' }}
+                    dangerouslySetInnerHTML={{ __html: selectedEmail.body || '<i>İçerik bulunamadı veya yüklenemedi.</i>' }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         )}

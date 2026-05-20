@@ -26,14 +26,14 @@ def get_rag_chain():
 
     vectorstore = Chroma(persist_directory=CHROMA_DIR, embedding_function=embeddings)
     
-    # 2. Setup Retriever — k=12 for better document coverage
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 12})
+    # 2. Setup Retriever — k=3 is optimal for token limits
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
     
     # 3. Setup LLM — Google Gemini 2.5 Flash via OpenRouter
     llm = ChatOpenAI(
         model="google/gemini-2.5-flash", 
         temperature=0,
-        max_tokens=2000,
+        max_tokens=200,
         openai_api_key=os.environ.get("OPENROUTER_API_KEY"),
         openai_api_base="https://openrouter.ai/api/v1",
         default_headers={
@@ -90,6 +90,7 @@ KESİN KURALLAR — BUNLARI İHLAL ETME:
   - Örnek: "Yazılım Mühendisliğine Giriş (BLM2-2410) final sınavı Perşembe günü saat 12.45 - 13.15 arasında A203, A207 ve A208 dersliklerinde yapılacaktır."
   - Açık tarih veya gün belirt.
   - Tarih/takvim bilgisi bağlamda varsa KESİNLİKLE kullan, "bilgim yok" deme.
+  - Sınav programlarında hem gün adları (Pazartesi, Salı vb.) hem de açık tarihler (örn. 01.06.26) bir arada bulunuyorsa, günleri akademik takvimdeki sınav dönemi tarihlerini baz alarak eşleştir. Örneğin, eğer yarıyıl sonu sınavları 01.06.2026 Pazartesi günü başlıyorsa, sınav programı tablosundaki 'Pazartesi' 1 Haziran 2026'ya denk gelir. Dolayısıyla ilk sınav bu Pazartesi gününün ilk oturumundaki (örn. 09.00'daki İŞ SAĞLIĞI VE GÜVENLİĞİ) derstir. Tablonun sonundaki '01.06.26' tarihleri ise aslında ikinci haftanın pazartesisini (08.06.2026) kastetmektedir. Bu mantık yürütmeyi doğru yap ve bugünün tarihini (sistem zamanı) sınavların başlangıcı olarak karıştırma.
 
 ▸ CEVAP FORMATI:
   - Kısa ve öz ol, gereksiz cümle uzatmalarından kaçın.
@@ -163,22 +164,7 @@ Akademik Kadro Bilgileri:
             for dept, count in depts.items():
                 stats_text += f"- {dept}: {count} kişi\n"
                 
-            lines = []
-            for p in d:
-                dept = format_dept(p.get('department'))
-                title = p.get('details', {}).get('title', '')
-                office = ', '.join([o['time'] for o in p.get('details', {}).get('office_hours', [])])
-                tasks_list = p.get('details', {}).get('tasks', [])
-                tasks_str = '; '.join([f"{t.get('duty','')} ({t.get('unit','')})" for t in tasks_list]) if tasks_list else ''
-                
-                line = f"{title} {p['name']} - {dept} - E-Posta: {p.get('email', '')}"
-                if office:
-                    line += f" - Ofis Saatleri: {office}"
-                if tasks_str:
-                    line += f" - Görevler: {tasks_str}"
-                lines.append(line)
-                
-            personnel_text = stats_text + "\n" + "\n".join(lines)
+            personnel_text = stats_text
         except Exception as e:
             print(f"Error loading personnel data: {e}")
 

@@ -53,9 +53,33 @@ if api_key:
 
 # RAG chain'i bir kere başlat ve bellekte tut (her istekte yeniden yükleme!)
 _rag_chain = None
+API_KEYS = []
+CURRENT_KEY_INDEX = 0
+
+def init_api_keys():
+    global API_KEYS, CURRENT_KEY_INDEX
+    from dotenv import load_dotenv
+    # reload dotenv to make sure we get the latest changes
+    load_dotenv(override=True)
+    primary = os.environ.get("OPENROUTER_API_KEY")
+    fallbacks = os.environ.get("OPENROUTER_API_KEY_FALLBACKS", "")
+    keys = [primary] if primary else []
+    if fallbacks:
+        for k in fallbacks.split(","):
+            k_clean = k.strip()
+            if k_clean and k_clean not in keys:
+                keys.append(k_clean)
+    API_KEYS = keys
+    if primary in API_KEYS:
+        CURRENT_KEY_INDEX = API_KEYS.index(primary)
+    else:
+        CURRENT_KEY_INDEX = 0
+    print(f"[API ROTATOR] Loaded {len(API_KEYS)} API keys. Current index: {CURRENT_KEY_INDEX}")
 
 def get_cached_rag_chain():
     global _rag_chain
+    if not API_KEYS:
+        init_api_keys()
     if _rag_chain is None:
         print("Initializing RAG chain (first time only)...")
         _rag_chain = get_rag_chain()
@@ -122,6 +146,11 @@ def startup_event():
     seed_db(db)
     # RAG chain'i sunucu başlarken hazırla (ilk isteği bekletmemek için)
     get_cached_rag_chain()
+    
+    # Arka planda duyuruları önden çek (gecikmeyi sıfırlamak için)
+    import threading
+    threading.Thread(target=prefetch_announcements, daemon=True).start()
+
 
 # --- Endpoints ---
 
@@ -133,6 +162,10 @@ class ChatRequest(BaseModel):
     message: str
     history: list[Message] = []
     context: str = ""
+    zimbra_email: str = None
+    emails: list = None
+    deadlines: list = None
+    announcements: list = None
 
 # ═══════════════════════════════════════════════════════
 # Akıllı Semantik Önbellek (Semantic Cache) Sistemi
@@ -352,63 +385,133 @@ class SemanticCache:
 
 # Global semantik cache örneği
 semantic_cache = SemanticCache(similarity_threshold=0.85, max_entries=200)
+ENABLE_SEMANTIC_CACHE = False  # Yanlış eşleşmeleri (false-positives) önlemek için varsayılan olarak devre dışı bırakıldı
 
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     # 1. Semantik Önbellek (Cache) Kontrolü
-    cached_result = semantic_cache.lookup(req.message)
-    if cached_result:
-        return cached_result
+    if ENABLE_SEMANTIC_CACHE:
+        cached_result = semantic_cache.lookup(req.message)
+        if cached_result:
+            return cached_result
+
+    # 2. SSS (FAQ) Semantik Arama Kontrolü
+    try:
+        from src.local_query import get_faq_match
+        faq_result = get_faq_match(req.message, semantic_cache.embedder)
+        if faq_result:
+            return faq_result
+    except Exception as e:
+        print(f"⚠️ FAQ match check error: {e}")
+
+    # 3. Yerel Sorgu Sınıflandırma ve Çözümleme (0 API Cost)
+    try:
+        from src.local_query import resolve_personnel_query, resolve_email_query
+        
+        # E-posta sorgusu çözümü (eğer kullanıcı e-postaları gönderilmişse)
+        if req.emails:
+            email_result = resolve_email_query(req.message, req.emails)
+            if email_result:
+                return email_result
+                
+        # Akademik personel sorgusu çözümü
+        personnel_result = resolve_personnel_query(req.message)
+        if personnel_result:
+            return personnel_result
+    except Exception as e:
+        print(f"⚠️ Local query resolution error: {e}")
 
     rag_chain = get_cached_rag_chain()
     if not rag_chain:
         raise HTTPException(status_code=500, detail="RAG zinciri başlatılamadı. Lütfen veritabanının hazır olduğundan emin olun.")
 
     chat_history = []
-    for msg in req.history:
+    # Son 6 mesajı al (Token limitini aşmamak için geçmişi sınırla)
+    recent_history = req.history[-6:] if len(req.history) > 6 else req.history
+    for msg in recent_history:
         if msg.role == "user":
             chat_history.append(HumanMessage(content=msg.content))
         else:
             chat_history.append(AIMessage(content=msg.content))
 
     # Eğer API rate-limit (kota/429) kaynaklıysa, kısa denemelerle (exponential backoff) tekrar dene
-    max_retries = 3
+    max_retries = max(3, len(API_KEYS) + 2)
     backoff = 1
     response = None
     
-    final_input = req.message
+    # --- Akıllı Bağlam Sıkıştırma (Context Compression) ---
+    compressed_context_parts = []
+    
+    # Bugünün Tarihi
+    import datetime
+    now_dt = datetime.datetime.now()
+    turkish_months = {
+        1: "Ocak", 2: "Şubat", 3: "Mart", 4: "Nisan", 5: "Mayıs", 6: "Haziran",
+        7: "Temmuz", 8: "Ağustos", 9: "Eylül", 10: "Ekim", 11: "Kasım", 12: "Aralık"
+    }
+    date_str = f"{now_dt.day} {turkish_months.get(now_dt.month, '')} {now_dt.year}"
+    compressed_context_parts.append(f"Bugünün Tarihi (Sistem Zamanı): {date_str}")
+    
+    # Arayüzün yolladığı temel sayfa bağlamı (Aktif sayfa)
     if req.context:
-        final_input = f"[Arayüz Bağlamı / Mevcut Sayfa Verileri:\n{req.context}]\n\nSoru: {req.message}"
+        compressed_context_parts.append(req.context)
+        
+    # Sorulan hoca varsa sadece onun detayını ekle
+    try:
+        from src.local_query import extract_relevant_personnel_context
+        personnel_context = extract_relevant_personnel_context(req.message)
+        if personnel_context:
+            compressed_context_parts.append(personnel_context)
+    except Exception as e:
+        print(f"⚠️ Context compression personnel error: {e}")
+        
+    # Duyurular (Son 3 adet yeterli)
+    if req.announcements:
+        ann_lines = [f"- {a.get('title')} ({a.get('date', 'tarih yok')})" for a in req.announcements[:3]]
+        compressed_context_parts.append("Güncel Duyurular:\n" + "\n".join(ann_lines))
+    elif ANNOUNCEMENTS_CACHE.get("data"):
+        ann_lines = [f"- {a['title']} ({a.get('date', 'tarih yok')})" for a in ANNOUNCEMENTS_CACHE["data"][:3]]
+        compressed_context_parts.append("Güncel Duyurular:\n" + "\n".join(ann_lines))
+        
+    # Yaklaşan Ödevler ve Etkinlikler (UBOM) - Son 5 adet
+    if req.deadlines:
+        dl_lines = [
+            f"- Etkinlik: {d.get('name')}, Başlangıç: {d.get('timestart')}, Formatlı Tarih: {d.get('deadline')}, Tür: {d.get('eventtype')}, Ders: {d.get('course_name')}, Açıklama: {d.get('description', '')[:50]}"
+            for d in req.deadlines[:5]
+        ]
+        compressed_context_parts.append("Kullanıcının UBOM Etkinlikleri ve Ödevleri:\n" + "\n".join(dl_lines))
+        
+    # E-postalar (Sadece sorguda e-posta kelimesi geçiyorsa ve son 3 adet)
+    q_lower = req.message.lower()
+    if any(w in q_lower for w in ["mail", "e-posta", "eposta", "mesaj"]) and req.emails:
+        email_lines = [f"Gönderen: {e.get('from_name') or e.get('from_address')}, Konu: {e.get('subject')}, Tarih: {e.get('date')}, Özet: {e.get('snippet','')[:120]}" for e in req.emails[:3]]
+        compressed_context_parts.append("Kullanıcının Son E-postaları:\n" + "\n".join(email_lines))
 
-    # --- Sunucu Taraflı Veri Zenginleştirme ---
-    server_context_parts = []
-    
-    # 1. Duyurular (cache'den)
-    if ANNOUNCEMENTS_CACHE.get("data"):
-        ann_lines = [f"- {a['title']} ({a.get('date', 'tarih yok')}) → {a.get('href', '')}" for a in ANNOUNCEMENTS_CACHE["data"]]
-        server_context_parts.append("Güncel İSTE Duyuruları:\n" + "\n".join(ann_lines))
-    
-    # 2. Sistemde yüklü doküman listesi ve Takvim Verileri
+    # Doküman takvim verileri (sınav takvimi)
     raw_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "raw")
     if os.path.exists(raw_dir):
         doc_files = [f for f in os.listdir(raw_dir) if f.endswith(('.pdf', '.txt', '.docx'))]
-        if doc_files:
-            server_context_parts.append("Sistemde Yüklü Doküman İsimleri:\n" + "\n".join([f"- {f}" for f in doc_files]))
-            
-        # Takvim/Sınav verilerini metin olarak doğrudan enjekte et (Tablolar RAG'dan kaçabiliyor)
-        takvim_files = [f for f in doc_files if f.endswith('.txt') and 'takvim' in f.lower()]
-        for t_file in takvim_files:
-            t_path = os.path.join(raw_dir, t_file)
-            try:
-                with open(t_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    # LLM token limitini korumak için ilk 8000 karakterini alalım
-                    server_context_parts.append(f"--- {t_file} İÇERİĞİ ---\n{content[:8000]}")
-            except Exception as e:
-                pass
-                
-    if server_context_parts:
-        final_input = final_input + "\n\n[Sunucu Ek Verileri:\n" + "\n\n".join(server_context_parts) + "]"
+        
+        # Takvim verilerini doğrudan enjekte et (Sınav, takvim araması varsa)
+        if any(w in q_lower for w in ["sinav", "takvim", "tarih", "vize", "final", "butunleme", "etkinlik", "ödev"]):
+            takvim_files = [f for f in doc_files if f.endswith('.txt') and 'takvim' in f.lower()]
+            for t_file in takvim_files:
+                t_path = os.path.join(raw_dir, t_file)
+                try:
+                    with open(t_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        if "akademik" in t_file.lower():
+                            lines = content.split('\n')
+                            filtered_lines = [l for l in lines if any(k in l.lower() for k in ["sınav", "yarıyıl", "vize", "final", "bütünleme", "tek ders", "başlama", "bitiş", "takvim faaliyetleri"])]
+                            content = "\n".join(filtered_lines)
+                        compressed_context_parts.append(f"--- {t_file} İÇERİĞİ ---\n{content}")
+                except:
+                    pass
+
+    final_input = req.message
+    if compressed_context_parts:
+        final_input = f"[Sıkıştırılmış Sistem Bağlamı:\n" + "\n\n".join(compressed_context_parts) + f"]\n\nSoru: {req.message}"
+
         
     for attempt in range(max_retries):
         try:
@@ -419,6 +522,48 @@ async def chat_endpoint(req: ChatRequest):
             break
         except Exception as e:
             error_msg = str(e)
+            
+            # Bakiye veya yetki hatası mı? Rotasyon yapıp tekrar deneyelim
+            is_auth_or_credit_error = (
+                "402" in error_msg or
+                "401" in error_msg or
+                "credits" in error_msg.lower() or
+                "max_tokens" in error_msg.lower() or
+                "payment" in error_msg.lower() or
+                "unauthorized" in error_msg.lower()
+            )
+            
+            global CURRENT_KEY_INDEX, _rag_chain
+            if is_auth_or_credit_error and API_KEYS and CURRENT_KEY_INDEX < len(API_KEYS) - 1:
+                CURRENT_KEY_INDEX += 1
+                next_key = API_KEYS[CURRENT_KEY_INDEX]
+                masked_key = next_key[:12] + "..." + next_key[-4:] if len(next_key) > 16 else "..."
+                print(f"[API ROTATOR] Bakiye/Yetki hatası alındı. Yedek API anahtarına geçiliyor ({CURRENT_KEY_INDEX+1}/{len(API_KEYS)}): {masked_key}")
+                os.environ["OPENROUTER_API_KEY"] = next_key
+                _rag_chain = None  # Reset chain
+                rag_chain = get_cached_rag_chain()
+                
+                # Persist the new key as primary in .env
+                try:
+                    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+                    if os.path.exists(env_path):
+                        with open(env_path, 'r', encoding='utf-8') as f_env:
+                            env_lines = f_env.readlines()
+                        new_lines = []
+                        for line in env_lines:
+                            if line.startswith("OPENROUTER_API_KEY="):
+                                new_lines.append(f"OPENROUTER_API_KEY={next_key}\n")
+                            else:
+                                new_lines.append(line)
+                        with open(env_path, 'w', encoding='utf-8') as f_env:
+                            f_env.writelines(new_lines)
+                        print("[API ROTATOR] .env dosyası yeni anahtarla güncellendi.")
+                except Exception as env_ex:
+                    print(f"[API ROTATOR] .env güncellenirken hata oluştu: {env_ex}")
+                
+                # Tekrar dene
+                continue
+
             is_rate_limit = (
                 "429" in error_msg or
                 "quota" in error_msg.lower() or
@@ -453,18 +598,16 @@ async def chat_endpoint(req: ChatRequest):
     answer = response.get("answer") if isinstance(response, dict) else response["answer"]
     
     # --- Akıllı Kaynak Etiket Ayrıştırma ---
-    # Yeni format: [KAYNAK:MEVZUAT:dosya_adı|Neden kullanıldı/kesit] ve [KAYNAK:KADRO]
+    # Yeni format: [KAYNAK:MEVZUAT:dosya_adı|Neden kullanıldı/kesit] veya [KAYNAK:dosya_adı|kesit] ve [KAYNAK:KADRO]
     import re as re_module
     
-    # AI'nin belirttiği spesifik dosya isimlerini ve kesitleri yakala
-    # (Eski formatsız veya kesitsiz gelenleri de yakalamak için | kısmı opsiyonel yapıldı)
-    ai_specified_sources = re_module.findall(r'\[KAYNAK:MEVZUAT:([^\|\]]+)(?:\|([^\]]+))?\]', answer)
+    # AI'nin belirttiği spesifik dosya isimlerini ve kesitleri yakala (MEVZUAT öneki olmadan da destekler)
+    ai_specified_sources = re_module.findall(r'\[KAYNAK:(?!KADRO\]|MEVZUAT\])(?:MEVZUAT:)?([^\|\]]+)(?:\|([^\]]+))?\]', answer)
     used_kadro = "[KAYNAK:KADRO]" in answer
     used_mevzuat_generic = "[KAYNAK:MEVZUAT]" in answer  # Eski format uyumluluğu
     
-    # Tüm kaynak etiketlerini cevaptan temizle
-    answer = re_module.sub(r'\[KAYNAK:MEVZUAT:[^\]]*\]', '', answer)
-    answer = answer.replace("[KAYNAK:MEVZUAT]", "").replace("[KAYNAK:KADRO]", "").strip()
+    # Tüm kaynak etiketlerini cevaptan temizle (satır içi görünmemesi için)
+    answer = re_module.sub(r'\[KAYNAK:[^\]]*\]', '', answer).strip()
 
     source_docs = []
     seen_sources = set()  # Tekrar eden kaynakları engelle
@@ -518,8 +661,9 @@ async def chat_endpoint(req: ChatRequest):
         "sources": source_docs
     }
     
-    # 2. Semantik Önbelleğe Kaydetme
-    semantic_cache.store(req.message, answer, source_docs)
+    # 2. Semantik Önbelleğe Kaydetme (Aktif ise)
+    if ENABLE_SEMANTIC_CACHE:
+        semantic_cache.store(req.message, answer, source_docs)
 
     return final_response
 
@@ -761,6 +905,52 @@ async def get_stats(db: Session = Depends(get_db)):
         "efficiency": ai_efficiency
     }
 
+@app.get("/api/api-key-status")
+async def get_api_key_status():
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        return {
+            "is_available": False,
+            "error": "OPENROUTER_API_KEY .env dosyasında bulunamadı."
+        }
+    
+    url = "https://openrouter.ai/api/v1/key"
+    headers = {
+        "Authorization": f"Bearer {api_key}"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            data = response.json().get("data", {})
+            
+            # Read custom limit from env if OpenRouter limit is null
+            env_limit_str = os.environ.get("OPENROUTER_LIMIT")
+            env_limit = float(env_limit_str) if env_limit_str else None
+            
+            limit = data.get("limit")
+            if limit is None:
+                limit = env_limit if env_limit is not None else 10.0 # Default to $10 if limit is not set
+                
+            return {
+                "is_available": True,
+                "label": data.get("label", "Aktif Anahtar"),
+                "limit": limit,
+                "usage": data.get("usage", 0.0),
+                "usage_daily": data.get("usage_daily", 0.0),
+                "is_free_tier": data.get("is_free_tier", False)
+            }
+        else:
+            return {
+                "is_available": False,
+                "error": f"OpenRouter API Hatası ({response.status_code})"
+            }
+    except Exception as e:
+        return {
+            "is_available": False,
+            "error": f"Bağlantı hatası: {str(e)[:100]}"
+        }
+
 @app.get("/api/drafts")
 async def get_drafts(db: Session = Depends(get_db)):
     drafts = db.query(Draft).order_by(Draft.updated_at.desc()).all()
@@ -823,8 +1013,7 @@ async def download_source(filename: str):
             if "ekleme" in t_lower and "ekleme" in f_lower:
                 return f
         return None
-
-    # Search in data/raw/
+        # Search in data/raw/
     matched_name = find_file(raw_dir, filename)
     if matched_name:
         file_path = os.path.join(raw_dir, matched_name)
@@ -855,15 +1044,8 @@ ANNOUNCEMENTS_CACHE = {
     "last_updated": 0
 }
 
-@app.get("/api/announcements")
-async def get_announcements():
+def fetch_announcements_bg():
     global ANNOUNCEMENTS_CACHE
-    current_time = time.time()
-    
-    # Cache for 1 hour
-    if current_time - ANNOUNCEMENTS_CACHE["last_updated"] < 3600 and ANNOUNCEMENTS_CACHE["data"]:
-        return ANNOUNCEMENTS_CACHE["data"]
-        
     try:
         r = requests.get('https://iste.edu.tr/duyuru-merkezi/oidb', timeout=10)
         r.encoding = 'utf-8'
@@ -887,11 +1069,11 @@ async def get_announcements():
                     date_str = ""
                     if date_match:
                         date_str = f"{date_match.group(3)}.{date_match.group(2)}.{date_match.group(1)}"
-                        
+                    
                     items.append({
-                        'title': title,
-                        'href': href,
-                        'date': date_str
+                        "title": title,
+                        "url": href if href.startswith('http') else f"https://iste.edu.tr{href}",
+                        "date": date_str
                     })
                     
                 if len(items) >= 5: # Get latest 5 announcements
@@ -899,15 +1081,37 @@ async def get_announcements():
                     
         if items:
             ANNOUNCEMENTS_CACHE["data"] = items
-            ANNOUNCEMENTS_CACHE["last_updated"] = current_time
+            ANNOUNCEMENTS_CACHE["last_updated"] = time.time()
             
         return ANNOUNCEMENTS_CACHE["data"]
     except Exception as e:
         print(f"Error scraping announcements: {e}")
         return ANNOUNCEMENTS_CACHE["data"]
 
+def prefetch_announcements():
+    try:
+        fetch_announcements_bg()
+    except:
+        pass
+
+from fastapi import BackgroundTasks
+
+@app.get("/api/announcements")
+def get_announcements(background_tasks: BackgroundTasks):
+    global ANNOUNCEMENTS_CACHE
+    current_time = time.time()
+    
+    # Cache for 1 hour
+    if current_time - ANNOUNCEMENTS_CACHE["last_updated"] < 3600 and ANNOUNCEMENTS_CACHE["data"]:
+        return ANNOUNCEMENTS_CACHE["data"]
+        
+    # Trigger background scrape if cache expired/empty
+    # This ensures the request returns immediately without hanging on the HTTP request
+    background_tasks.add_task(fetch_announcements_bg)
+    return ANNOUNCEMENTS_CACHE["data"]
+
 @app.get("/api/personnel")
-async def get_personnel():
+def get_personnel():
     personnel_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'personnel.json')
     if os.path.exists(personnel_file):
         with open(personnel_file, 'r', encoding='utf-8') as f:
@@ -915,7 +1119,7 @@ async def get_personnel():
     return []
 
 @app.get("/api/person_detail")
-async def get_person_detail(url: str):
+def get_person_detail(url: str):
     import requests
     from bs4 import BeautifulSoup
     
@@ -1025,7 +1229,7 @@ class ZimbraInboxRequest(BaseModel):
     offset: int = 0
 
 @app.post("/api/zimbra/inbox")
-async def zimbra_inbox_endpoint(req: ZimbraInboxRequest):
+def zimbra_inbox_endpoint(req: ZimbraInboxRequest):
     """Gelen kutusu e-postalarını çeker ve sınıflandırır."""
     token = _zimbra_sessions.get(req.email)
     if not token:
@@ -1034,6 +1238,49 @@ async def zimbra_inbox_endpoint(req: ZimbraInboxRequest):
     try:
         emails = fetch_inbox(token, limit=req.limit, offset=req.offset)
         
+        # Sadece akademik (academic) olan e-postaların tam içeriğini (body) çekelim
+        # Çünkü SearchRequest tam body'yi getirmeyebilir
+        # Hız kazanmak için bu işlemi ThreadPoolExecutor ile PARALEL yapalım!
+        from concurrent.futures import ThreadPoolExecutor
+        academic_emails = [
+            e for e in emails 
+            if e.get('category') == 'academic' and (not e.get('body') or len(e.get('body', '')) < 100)
+        ]
+        # Hız ve Zimbra korumalarını tetiklememek için sadece en güncel 8 akademik e-postanın gövdesini çek
+        academic_emails = academic_emails[:8]
+        
+        def fetch_single_body(e):
+            try:
+                detail = fetch_message(token, e['id'])
+                e['body'] = detail.get('body', '')
+            except Exception as ex:
+                print(f"Failed to fetch full message body for {e['id']}: {ex}")
+
+        if academic_emails:
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                executor.map(fetch_single_body, academic_emails)
+        
+        # DEBUG: Log academic emails to check their URLs
+        try:
+            debug_path = r"C:\Users\Acer\.gemini\antigravity\brain\34a567b3-d450-4676-8de3-4ba5a5c88973\scratch\emails_debug.txt"
+            debug_full_path = r"C:\Users\Acer\.gemini\antigravity\brain\34a567b3-d450-4676-8de3-4ba5a5c88973\scratch\emails_full_body.txt"
+            os.makedirs(os.path.dirname(debug_path), exist_ok=True)
+            with open(debug_path, "w", encoding="utf-8") as f, open(debug_full_path, "w", encoding="utf-8") as f_full:
+                for e in emails:
+                    if e.get('category') == 'academic':
+                        body_content = e.get('body', '')
+                        urls = re.findall(r'https?://[^\s"<>]+', body_content)
+                        f.write(f"Subject: {e.get('subject')}\n")
+                        f.write(f"Snippet: {e.get('snippet')}\n")
+                        f.write(f"URLs: {urls}\n")
+                        f.write("-" * 50 + "\n")
+                        
+                        f_full.write(f"Subject: {e.get('subject')}\n")
+                        f_full.write(f"Body:\n{body_content}\n")
+                        f_full.write("=" * 80 + "\n")
+        except Exception as ex:
+            print(f"Debug logging failed: {ex}")
+            
         academic_count = sum(1 for e in emails if e['category'] == 'academic')
         announcement_count = sum(1 for e in emails if e['category'] == 'announcement')
         unread_count = sum(1 for e in emails if not e['is_read'])
@@ -1054,152 +1301,30 @@ async def zimbra_inbox_endpoint(req: ZimbraInboxRequest):
             raise HTTPException(status_code=401, detail="Oturum süresi doldu, lütfen tekrar giriş yapın.")
         raise HTTPException(status_code=500, detail=str(e))
 
-class EmailExtractRequest(BaseModel):
-    id: str
-    subject: str
-    body: str
-    date: str
+from src.ubom_client import ubom_login, fetch_ubom_deadlines
 
-class DeadlineExtractRequest(BaseModel):
-    emails: list[EmailExtractRequest]
+class UbomLoginRequest(BaseModel):
+    username: str
+    password: str
 
-@app.post("/api/zimbra/extract-deadlines")
-async def extract_deadlines(req: DeadlineExtractRequest):
-    """E-postalardaki tarihleri (deadline) yapay zeka ile analiz eder. Önce OpenRouter, sonra Gemini dener."""
-    if not req.emails:
-        return {"deadlines": []}
-        
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Prepare text for LLM
-    emails_text = ""
-    for e in req.emails:
-        clean_body = re.sub(r'<[^>]+>', ' ', e.body[:1500])
-        emails_text += f"ID: {e.id}\nTarih: {e.date}\nKonu: {e.subject}\nİçerik: {clean_body}\n---\n"
-        
-    prompt_text = f"""Şu anki sistem zamanı: {current_time}
+@app.post("/api/ubom/login")
+async def ubom_login_endpoint(req: UbomLoginRequest):
+    try:
+        token = ubom_login(req.username, req.password)
+        return {"success": True, "token": token}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
-Aşağıdaki e-postaları dikkatlice analiz et. YALNIZCA KESİN VE ZORUNLU BİR TESLİM TARİHİ (DEADLINE), SINAV TARİHİ VEYA ÖDEV TESLİMİ içeren e-postaları tespit et.
+class UbomDeadlinesRequest(BaseModel):
+    token: str
 
-ÇOK ÖNEMLİ KURALLAR (YANLIŞ POZİTİF ÖNLEME):
-1. "Etkinlik", "duyuru", "bilgilendirme", "staj bilgilendirmesi" gibi ödev/sınav OLMAYAN, sadece bilgi veren e-postaları KESİNLİKLE YOK SAY ve listeye alma.
-2. Yalnızca "son başvuru", "teslim tarihi", "deadline", "due date", "sınav tarihi" gibi kesin teslim/sınav yükümlülüğü belirten ifadeleri dikkate al. Net bir teslim tarihi yoksa listeye ekleme.
-3. Eğer net bir tarih veya zaman belirtilmişse e-postanın gönderildiği 'Tarih' bilgisini baz alarak bu tarihin tam ISO 8601 formatını (YYYY-MM-DDTHH:MM:SS) hesapla.
-4. E-posta içeriğinde bir bağlantı (URL) veya UBÖM yönlendirme linki varsa bunu tespit et (sadece URL kısmını al).
-
-Lütfen sadece aşağıdaki JSON dizisi formatında yanıt ver, hiçbir ekstra metin ekleme:
-[
-  {{
-    "email_id": "ilgili_eposta_id",
-    "title": "Kısa ve öz görev başlığı (örn: Sayısal Görüntü İşleme Ödevi)",
-    "deadline": "YYYY-MM-DDTHH:MM:SS",
-    "link": "Varsa ödevin/duyurunun linki (UBÖM linki vb.), yoksa boş string bırak"
-  }}
-]
-
-Eğer geçerli bir ödev/teslim tarihi yoksa sadece boş bir dizi dön: []
-
-E-Postalar:
-{emails_text}"""
-
-    def _parse_deadlines(response_text: str):
-        """JSON dizisini response text'ten çıkar ve tekilleştir (deduplication)."""
-        match = re.search(r"\[.*\]", response_text, re.DOTALL)
-        if match:
-            try:
-                deadlines = json.loads(match.group(0))
-                unique_deadlines = {}
-                for d in deadlines:
-                    # Link'ten query parametrelerini temizleyerek normalize et (session id vb. olabilir)
-                    link = d.get("link", "").strip()
-                    if link and "?" in link:
-                        link = link.split("?")[0]
-                        
-                    # Başlığı normalize et
-                    title = d.get("title", "").strip().lower()
-                    
-                    # Öncelik linkte, link yoksa başlığa göre tekilleştir
-                    key = link if len(link) > 5 else title
-                    if not key:
-                        continue
-                        
-                    if key not in unique_deadlines:
-                        unique_deadlines[key] = d
-                    else:
-                        # Eğer aynı görev daha önce eklendiyse ve yeni gelen e-postanın deadline'ı daha yeniyse vs.
-                        # Şimdilik direkt ilk tespit edileni veya son geleni tutabiliriz (ilk olan genelde en güncel maildir çünkü emails array'i tersten geliyor olabilir).
-                        pass
-                        
-                return list(unique_deadlines.values())
-            except Exception as e:
-                print(f"[DEADLINES] JSON parse error: {e}")
-                return None
-        return None
-
-    # --- YOL 1: OpenRouter API (ana yol — kota sorunu yok) ---
-    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
-    if openrouter_key:
-        try:
-            print(f"[DEADLINES] Using OpenRouter for {len(req.emails)} emails...")
-            import httpx
-            resp = httpx.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {openrouter_key}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "http://localhost:8000",
-                    "X-Title": "Ogrenci Rehberi"
-                },
-                json={
-                    "model": "openrouter/auto",
-                    "messages": [{"role": "user", "content": prompt_text}],
-                    "temperature": 0
-                },
-                timeout=30.0
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                print(f"[DEADLINES] OpenRouter response: {content[:500]}")
-                deadlines = _parse_deadlines(content)
-                if deadlines is not None:
-                    print(f"[DEADLINES] Found {len(deadlines)} deadlines via OpenRouter")
-                    return {"deadlines": deadlines}
-                print("[DEADLINES] No deadlines parsed from OpenRouter response")
-                return {"deadlines": []}
-            else:
-                print(f"[DEADLINES] OpenRouter HTTP {resp.status_code}: {resp.text[:200]}")
-        except Exception as e:
-            print(f"[DEADLINES] OpenRouter failed: {e}")
-
-    # --- YOL 2: Gemini Fallback ---
-    if gemini_client:
-        models_to_try = ["gemini-flash-latest", "gemini-2.5-flash"]
-        for model_name in models_to_try:
-            try:
-                print(f"[DEADLINES] Gemini fallback: trying '{model_name}'...")
-                response = gemini_client.models.generate_content(
-                    model=model_name,
-                    contents=prompt_text
-                )
-                response_text = response.text
-                print(f"[DEADLINES] Gemini ({model_name}) response: {response_text[:500]}")
-                deadlines = _parse_deadlines(response_text)
-                if deadlines is not None:
-                    print(f"[DEADLINES] Found {len(deadlines)} deadlines via Gemini {model_name}")
-                    return {"deadlines": deadlines}
-                return {"deadlines": []}
-            except Exception as e:
-                err = str(e)
-                is_quota = "429" in err or "quota" in err.lower() or "RESOURCE_EXHAUSTED" in err
-                print(f"[DEADLINES] Gemini '{model_name}' failed: {'QUOTA' if is_quota else 'ERROR'}")
-                if is_quota:
-                    time.sleep(1)
-                    continue
-                break
-
-    print("[DEADLINES] All methods failed")
-    return {"deadlines": [], "error": "Yapay zeka servisleri şu an kullanılamıyor."}
+@app.post("/api/ubom/deadlines")
+async def ubom_deadlines_endpoint(req: UbomDeadlinesRequest):
+    try:
+        deadlines = fetch_ubom_deadlines(req.token)
+        return {"deadlines": deadlines}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 class ZimbraMessageRequest(BaseModel):
     email: str

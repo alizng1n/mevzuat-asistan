@@ -90,7 +90,8 @@ def zimbra_login(email: str, password: str) -> str:
             ZIMBRA_SOAP_URL,
             email,
             password,
-            use_password=True
+            use_password=True,
+            timeout=10
         )
         return token
     except Exception as e:
@@ -104,7 +105,7 @@ def fetch_inbox(token: str, limit: int = 100, offset: int = 0) -> list:
     """
     academic_emails = _load_academic_emails()
     
-    comm = Communication(ZIMBRA_SOAP_URL)
+    comm = Communication(ZIMBRA_SOAP_URL, timeout=10)
     search_request = comm.gen_request(token=token)
     search_request.add_request(
         'SearchRequest',
@@ -216,7 +217,7 @@ def fetch_message(token: str, msg_id: str) -> dict:
     """
     Tek bir e-postanın tam içeriğini çeker.
     """
-    comm = Communication(ZIMBRA_SOAP_URL)
+    comm = Communication(ZIMBRA_SOAP_URL, timeout=10)
     msg_request = comm.gen_request(token=token)
     msg_request.add_request(
         'GetMsgRequest',

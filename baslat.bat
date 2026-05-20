@@ -4,10 +4,8 @@ echo Ogrenci Rehberi Baslatiliyor...
 echo ==============================================
 
 echo.
-echo Adim 1: Belgeler veritabanina kaydediliyor...
-call venv\Scripts\python.exe src\ingest.py
+echo Ipuclari: Veritabanini guncellemek (yeni belge eklemek) icin 'veritabani_guncelle.bat' dosyasini calistirin.
 
-echo.
 echo Adim 2: FastAPI Sunucusu arka planda baslatiliyor...
 start /B venv\Scripts\uvicorn.exe src.server:app --port 8000
 

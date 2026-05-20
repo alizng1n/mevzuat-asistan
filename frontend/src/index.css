@@ -233,6 +233,34 @@ body {
   color: var(--text-secondary);
 }
 
+/* Modern Input Elements */
+.modern-input {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  color: #0f172a; /* Dark text for white background */
+  font-family: var(--font-main);
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.modern-input::placeholder {
+  color: #64748b; /* Slate gray placeholder */
+  opacity: 0.8;
+}
+
+.modern-input:focus {
+  background-color: #ffffff;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.modern-input:hover:not(:focus) {
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
 .content-wrapper {
   padding: 0 48px 48px;
   max-width: 1200px;
